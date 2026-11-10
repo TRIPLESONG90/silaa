@@ -1,0 +1,311 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:silaa.UI"
+             xmlns:vm="using:silaa.ViewModels"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="silaa.UI.SettingsPage"
+             x:DataType="vm:SettingsViewModel"
+             Background="{DynamicResource SiBackgroundBrush}">
+  <UserControl.Resources>
+    <ControlTheme x:Key="ConnectionListItemTheme" TargetType="ListBoxItem">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="Padding" Value="2" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}"
+                  Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover">
+        <Setter Property="Background" Value="{DynamicResource SiHoverBrush}" />
+      </Style>
+      <Style Selector="^:selected">
+        <Setter Property="Background" Value="{DynamicResource SiRaisedBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" />
+      </Style>
+    </ControlTheme>
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <Style Selector="TextBlock.eyebrow">
+      <Setter Property="FontSize" Value="9.5" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="LetterSpacing" Value="1.2" />
+      <Setter Property="Foreground" Value="{DynamicResource SiMutedBrush}" />
+    </Style>
+    <Style Selector="TextBlock.section-title">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.help">
+      <Setter Property="FontSize" Value="10.5" />
+      <Setter Property="LineHeight" Value="15" />
+      <Setter Property="Foreground" Value="{DynamicResource SiMutedBrush}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="Border.form-card">
+      <Setter Property="Background" Value="{DynamicResource SiPanelBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="18,16" />
+    </Style>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="{DynamicResource SiAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SiOnAccentBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="15,8" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.secondary">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource SiForegroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="Padding" Value="11,7" />
+    </Style>
+    <Style Selector="TextBlock.option-group-title">
+      <Setter Property="FontSize" Value="10.5" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="LetterSpacing" Value="0.35" />
+      <Setter Property="Foreground" Value="{DynamicResource SiMutedBrush}" />
+    </Style>
+    <Style Selector="TextBox.option-input">
+      <Setter Property="MinHeight" Value="36" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="ComboBox.option-input">
+      <Setter Property="MinHeight" Value="36" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid ColumnDefinitions="Auto,*">
+    <Border IsVisible="{Binding HasNavigation}">
+      <ui:SettingsMenuView DataContext="{Binding Navigation}" />
+    </Border>
+
+    <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
+      <Border Background="{DynamicResource SiGlassBrush}"
+              BorderBrush="{DynamicResource SiGlassBorderBrush}" BorderThickness="0,0,0,1">
+        <Grid Margin="22,12" ColumnDefinitions="*,Auto" ColumnSpacing="18">
+          <StackPanel Spacing="2">
+            <TextBlock FontSize="15" FontWeight="SemiBold" Text="{Binding PageTitle}" />
+            <TextBlock FontSize="10.5" Foreground="{DynamicResource SiMutedBrush}"
+                       Text="{Binding PageSubtitle}" />
+          </StackPanel>
+          <Button Grid.Column="1" Classes="secondary" VerticalAlignment="Center"
+                  Command="{Binding BackCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <materialIcons:MaterialIcon Classes="ui-icon foreground" Kind="ArrowLeft" />
+              <TextBlock VerticalAlignment="Center" Text="{Binding BackLabel}" />
+            </StackPanel>
+          </Button>
+        </Grid>
+      </Border>
+
+      <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel MaxWidth="{DynamicResource SiContentMaxWidth}" Margin="{DynamicResource SiCompactPageMargin}" Spacing="18"
+                    HorizontalAlignment="Stretch">
+          <StackPanel IsVisible="{Binding IsConnectionList}" Spacing="18">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+            <StackPanel Spacing="5">
+              <TextBlock Classes="eyebrow" Text="CONNECTIONS" />
+              <TextBlock FontSize="21" FontWeight="SemiBold" Text="모델 연결" />
+              <TextBlock Classes="help" Text="OpenAI 호환 API를 여러 개 저장하고 활성 연결을 전환할 수 있습니다." />
+            </StackPanel>
+            <Button Grid.Column="1" Classes="secondary" VerticalAlignment="Bottom"
+                    Command="{Binding NewConnectionCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <materialIcons:MaterialIcon Classes="ui-icon foreground" Width="14" Height="14" Kind="Plus" />
+                <TextBlock VerticalAlignment="Center" Text="새 연결" />
+              </StackPanel>
+            </Button>
+          </Grid>
+
+          <Border Classes="form-card" IsVisible="{Binding HasConnections}">
+            <StackPanel Spacing="13">
+              <ListBox Classes="connection-list" ItemsSource="{Binding Connections}"
+                       ItemContainerTheme="{StaticResource ConnectionListItemTheme}"
+                       SelectedItem="{Binding SelectedConnection, Mode=TwoWay}"
+                       Background="Transparent" BorderThickness="0">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:LlmConnectionItemViewModel">
+                    <Grid Margin="6,7" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                      <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                              Background="#34C759" IsVisible="{Binding IsActive}" />
+                      <StackPanel Grid.Column="1" Spacing="3">
+                        <TextBlock FontSize="12.5" FontWeight="SemiBold" Text="{Binding Name}" />
+                        <TextBlock Classes="help" Text="{Binding Summary}" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                      <Border Grid.Column="2" IsVisible="{Binding IsActive}" VerticalAlignment="Center"
+                              Padding="8,3" CornerRadius="10" Background="{DynamicResource SiRaisedBrush}">
+                        <TextBlock FontSize="9.5" FontWeight="SemiBold" Text="사용 중" />
+                      </Border>
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+              <Border Height="1" Background="{DynamicResource SiDividerBrush}" />
+              <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+                <TextBlock VerticalAlignment="Center" Classes="help" Text="{Binding ConnectionCountText}" />
+                <Button Grid.Column="1" Classes="secondary" Command="{Binding EditConnectionCommand}"
+                        IsEnabled="{Binding HasSelectedConnection}" Content="설정 열기" />
+                <Button Grid.Column="2" Classes="secondary" Command="{Binding ActivateConnectionCommand}"
+                        IsEnabled="{Binding HasSelectedConnection}" Content="이 연결 사용" />
+                <Button Grid.Column="3" Classes="secondary" Command="{Binding DeleteConnectionCommand}"
+                        IsEnabled="{Binding HasSelectedConnection}" Content="삭제" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <Border Classes="form-card" IsVisible="{Binding !HasConnections}" Padding="28">
+            <StackPanel Spacing="7" HorizontalAlignment="Center">
+              <TextBlock HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold"
+                         Text="저장된 LLM 연결이 없습니다" />
+              <TextBlock Classes="help" TextAlignment="Center"
+                         Text="새 연결을 눌러 Ollama, NVIDIA 또는 OpenAI 호환 API를 추가하세요." />
+            </StackPanel>
+          </Border>
+          </StackPanel>
+
+          <StackPanel IsVisible="{Binding IsEditorOpen}" Spacing="18">
+          <StackPanel Spacing="4" Margin="1,5,1,0">
+            <TextBlock Classes="section-title" Text="선택한 연결" />
+            <TextBlock Classes="help" Text="엔드포인트와 인증 정보는 연결 프로필별로 독립 저장됩니다." />
+          </StackPanel>
+          <Border Classes="form-card">
+            <StackPanel Spacing="16">
+              <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+                <StackPanel Spacing="6">
+                  <TextBlock Classes="label" Text="연결 이름" />
+                  <TextBlock Classes="help" Text="예: 로컬 Ollama, NVIDIA, 사내 모델" />
+                  <TextBox Text="{Binding ConnectionName, Mode=TwoWay}" PlaceholderText="연결을 구분할 이름" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="6">
+                  <TextBlock Classes="label" Text="모델 ID" />
+                  <TextBlock Classes="help" Text="API 서버가 제공하는 실제 모델 ID" />
+                  <TextBox Text="{Binding Model, Mode=TwoWay}" PlaceholderText="qwen3.8:27b" />
+                </StackPanel>
+              </Grid>
+
+              <StackPanel Spacing="6">
+                <TextBlock Classes="label" Text="LLM API 주소" />
+                <TextBlock Classes="help" Text="기본 주소만 입력합니다. /chat/completions는 붙이지 않습니다." />
+                <TextBox Text="{Binding Endpoint, Mode=TwoWay}" PlaceholderText="https://integrate.api.nvidia.com/v1" />
+              </StackPanel>
+
+              <StackPanel Spacing="6">
+                <TextBlock Classes="label" Text="API 키" />
+                <TextBlock Classes="help" Text="연결별로 Windows DPAPI(CurrentUser) 암호화를 적용합니다." />
+                <TextBox Text="{Binding ApiKey, Mode=TwoWay}" PasswordChar="●"
+                         PlaceholderText="{Binding ApiKeyPlaceholder}" />
+                <CheckBox IsChecked="{Binding RemoveApiKey, Mode=TwoWay}" Content="저장된 API 키 삭제" />
+              </StackPanel>
+              <TextBlock Classes="help" Text="{Binding ApiKeyState}" />
+
+            </StackPanel>
+          </Border>
+
+          <StackPanel Spacing="4" Margin="1,5,1,0">
+            <TextBlock Classes="section-title" Text="모델 옵션" />
+            <TextBlock Classes="help" Text="비워둔 값은 API 서버의 기본값을 사용합니다." />
+          </StackPanel>
+          <Border Classes="form-card">
+            <StackPanel Spacing="17">
+              <TextBlock Classes="option-group-title" Text="제한 및 호환성" />
+              <Grid ColumnDefinitions="*,*,*" RowDefinitions="Auto,Auto"
+                    ColumnSpacing="12" RowSpacing="14">
+                <StackPanel Spacing="6">
+                  <TextBlock Classes="label" Text="최대 출력 토큰" />
+                  <TextBox Classes="option-input" Text="{Binding MaxOutputTokens, Mode=TwoWay}" PlaceholderText="자동" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="6">
+                  <TextBlock Classes="label" Text="컨텍스트 길이" />
+                  <TextBox Classes="option-input" Text="{Binding ContextWindowTokens, Mode=TwoWay}" PlaceholderText="자동" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="6">
+                  <TextBlock Classes="label" Text="요청 타임아웃 (초)" />
+                  <TextBox Classes="option-input" Text="{Binding RequestTimeout, Mode=TwoWay}" PlaceholderText="120" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="1" Spacing="6">
+                  <TextBlock Classes="label" Text="최대 토큰 필드" />
+                  <ComboBox Classes="option-input" ItemsSource="{Binding MaxTokenFields}"
+                            SelectedItem="{Binding SelectedMaxTokensField, Mode=TwoWay}" />
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="1" Spacing="6">
+                  <TextBlock Classes="label" Text="추론 수준" />
+                  <ComboBox Classes="option-input" ItemsSource="{Binding ReasoningEfforts}"
+                            SelectedItem="{Binding SelectedReasoningEffort, Mode=TwoWay}" />
+                  <TextBlock Classes="help" MaxWidth="260" TextWrapping="Wrap"
+                             Text="{Binding ReasoningEffortHelp}" />
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="2" Spacing="6">
+                  <TextBlock Classes="label" Text="Seed" />
+                  <TextBox Classes="option-input" Text="{Binding Seed, Mode=TwoWay}" PlaceholderText="자동" />
+                </StackPanel>
+              </Grid>
+
+              <Border Height="1" Background="{DynamicResource SiDividerBrush}" />
+              <TextBlock Classes="option-group-title" Text="샘플링" />
+              <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="12">
+                <StackPanel Spacing="6">
+                  <TextBlock Classes="label" Text="Temperature" />
+                  <TextBox Classes="option-input" Text="{Binding Temperature, Mode=TwoWay}" PlaceholderText="자동" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="6">
+                  <TextBlock Classes="label" Text="Top P" />
+                  <TextBox Classes="option-input" Text="{Binding TopP, Mode=TwoWay}" PlaceholderText="자동" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="6">
+                  <TextBlock Classes="label" Text="Frequency penalty" />
+                  <TextBox Classes="option-input" Text="{Binding FrequencyPenalty, Mode=TwoWay}" PlaceholderText="자동" />
+                </StackPanel>
+                <StackPanel Grid.Column="3" Spacing="6">
+                  <TextBlock Classes="label" Text="Presence penalty" />
+                  <TextBox Classes="option-input" Text="{Binding PresencePenalty, Mode=TwoWay}" PlaceholderText="자동" />
+                </StackPanel>
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <TextBlock Classes="help"
+                     Text="silaa는 Microsoft Agent Framework가 스트리밍과 함수 호출을 직접 처리합니다. 별도 CLI나 로컬 HTTP 중계 서버를 실행하지 않습니다." />
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+
+      <Border Grid.Row="2" IsVisible="{Binding IsEditorOpen}" Padding="16,11" Background="{DynamicResource SiGlassBrush}"
+              BorderBrush="{DynamicResource SiGlassBorderBrush}" BorderThickness="0,1,0,0">
+        <Grid MaxWidth="{DynamicResource SiContentMaxWidth}" HorizontalAlignment="Stretch" ColumnDefinitions="*,Auto" ColumnSpacing="16">
+          <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource SiMutedBrush}"
+                     FontSize="10.75" TextWrapping="Wrap" Text="{Binding Status}" />
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+            <Button Classes="secondary" Command="{Binding CheckHarnessCommand}" Content="하네스 확인" />
+            <Button Classes="primary" MinWidth="116" Command="{Binding SaveCommand}" Content="저장 및 사용" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Architecture Diagram"
+  short_description: "코드와 요구사항에서 검증 가능한 아키텍처 다이어그램을 만듭니다."
+  default_prompt: "현재 시스템을 분석해 가장 적합한 아키텍처 다이어그램을 Mermaid로 작성해 주세요."

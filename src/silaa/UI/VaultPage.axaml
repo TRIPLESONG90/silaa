@@ -1,0 +1,152 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:silaa.UI"
+             xmlns:vm="using:silaa.ViewModels"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="silaa.UI.VaultPage"
+             x:DataType="vm:VaultViewModel"
+             Background="{DynamicResource SiBackgroundBrush}">
+  <UserControl.Styles>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="{DynamicResource SiAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SiOnAccentBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="16,9" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.secondary">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource SiMutedBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="Padding" Value="10,6" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid>
+    <Grid ColumnDefinitions="Auto,*">
+      <ui:SettingsMenuView DataContext="{Binding Navigation}" />
+      <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled"
+                    HorizontalContentAlignment="Stretch">
+        <StackPanel MaxWidth="{DynamicResource SiContentMaxWidth}" Margin="{DynamicResource SiPageMargin}" Spacing="18"
+                    HorizontalAlignment="Stretch">
+          <StackPanel Spacing="6">
+            <TextBlock FontSize="9.5" FontWeight="SemiBold" LetterSpacing="1.2"
+                       Foreground="{DynamicResource SiMutedBrush}" Text="SECRETS" />
+            <TextBlock FontSize="24" FontWeight="SemiBold" Text="Vault" />
+            <TextBlock FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
+                       Text="API 키와 토큰을 암호화해 보관하고, Agent가 필요할 때 값 자체를 보지 않고 사용합니다." />
+          </StackPanel>
+
+          <Border Padding="18" CornerRadius="11" Background="{DynamicResource SiGlassBrush}"
+                  BorderBrush="{DynamicResource SiGlassBorderBrush}" BorderThickness="1">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+              <StackPanel Spacing="5">
+                <TextBlock FontSize="14" FontWeight="SemiBold" Text="새 키 저장" />
+                <TextBlock FontSize="10.75" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
+                           Text="입력값은 다이얼로그에서 마스킹되며 Windows DPAPI(CurrentUser)로 암호화됩니다." />
+              </StackPanel>
+              <Button x:Name="AddVaultKeyButton" Grid.Column="1" Classes="primary"
+                      VerticalAlignment="Center" Command="{Binding OpenAddCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <materialIcons:MaterialIcon Classes="ui-icon on-accent" Width="14" Height="14" Kind="Plus" />
+                  <TextBlock VerticalAlignment="Center" Text="키 추가" />
+                </StackPanel>
+              </Button>
+            </Grid>
+          </Border>
+
+          <TextBlock IsVisible="{Binding HasStatus}"
+                     Margin="2,-7,2,0" FontSize="11.5" TextWrapping="Wrap"
+                     Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Status}" />
+
+          <Grid Margin="2,8,2,0" ColumnDefinitions="*,Auto">
+            <TextBlock FontSize="15" FontWeight="SemiBold" Text="저장된 항목" />
+            <TextBlock Grid.Column="1" FontSize="10.5" VerticalAlignment="Center"
+                       Foreground="{DynamicResource SiMutedBrush}" Text="값은 표시되지 않습니다" />
+          </Grid>
+          <Border IsVisible="{Binding IsEmpty}" Padding="26" CornerRadius="12"
+                  Background="{DynamicResource SiPanelBrush}" BorderBrush="{DynamicResource SiDividerBrush}"
+                  BorderThickness="1">
+            <StackPanel Spacing="7" HorizontalAlignment="Center">
+              <materialIcons:MaterialIcon Classes="ui-icon foreground" Width="21" Height="21"
+                                          HorizontalAlignment="Center" Kind="LockOutline" />
+              <TextBlock HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold"
+                         Text="저장된 비밀 항목이 없습니다" />
+              <TextBlock MaxWidth="520" TextAlignment="Center" TextWrapping="Wrap" FontSize="11.5"
+                         Foreground="{DynamicResource SiMutedBrush}"
+                         Text="키 추가를 눌러 API 키나 토큰을 안전하게 저장하세요." />
+            </StackPanel>
+          </Border>
+          <ItemsControl ItemsSource="{Binding Entries}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Spacing="7" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:VaultEntryViewModel">
+                <Border Padding="14" CornerRadius="8" Background="{DynamicResource SiPanelBrush}"
+                        BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="1">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <StackPanel Spacing="3">
+                      <TextBlock FontSize="13" FontWeight="SemiBold" Text="{Binding Name}" />
+                      <TextBlock FontSize="10.5" Foreground="{DynamicResource SiMutedBrush}"
+                                 Text="{Binding UpdatedAt}" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Classes="icon-action danger" Command="{Binding RemoveCommand}" ToolTip.Tip="Vault 항목 삭제">
+                      <materialIcons:MaterialIcon Classes="ui-icon delete-icon" Kind="DeleteOutline" />
+                    </Button>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+
+    <Border x:Name="VaultDialogOverlay" ZIndex="100" IsVisible="{Binding IsDialogOpen}"
+            Background="#88000000">
+      <Border Width="460" HorizontalAlignment="Center" VerticalAlignment="Center"
+              Padding="22" CornerRadius="13"
+              Background="{DynamicResource SiGlassBrush}"
+              BorderBrush="{DynamicResource SiGlassBorderBrush}" BorderThickness="1"
+              BoxShadow="0 18 48 0 #44000000">
+        <StackPanel Spacing="16">
+          <StackPanel Spacing="5">
+            <TextBlock FontSize="18" FontWeight="SemiBold" Text="Vault 키 저장" />
+            <TextBlock FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
+                       Text="이름은 Agent가 사용할 환경변수 이름입니다. 키 원문은 저장 후 다시 표시되지 않습니다." />
+          </StackPanel>
+
+          <StackPanel Spacing="6">
+            <TextBlock FontSize="11.5" FontWeight="SemiBold" Text="키 이름" />
+            <TextBox x:Name="VaultNameInput" Text="{Binding DraftName, Mode=TwoWay}"
+                     PlaceholderText="예: GITHUB_TOKEN 또는 NVIDIA_API_KEY" />
+          </StackPanel>
+
+          <StackPanel Spacing="6">
+            <TextBlock FontSize="11.5" FontWeight="SemiBold" Text="키 값" />
+            <TextBox x:Name="VaultSecretInput" Text="{Binding DraftSecret, Mode=TwoWay}"
+                     PasswordChar="{Binding SecretPasswordChar}" PlaceholderText="API 키 또는 토큰을 붙여넣으세요" />
+            <CheckBox IsChecked="{Binding RevealSecret, Mode=TwoWay}" Content="입력값 표시" />
+          </StackPanel>
+
+          <Border Padding="10,8" CornerRadius="7" Background="{DynamicResource SiRaisedBrush}">
+            <TextBlock FontSize="10.5" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
+                       Text="키는 현재 Windows 사용자 계정에 묶여 암호화되며 대화나 LLM 요청에 포함되지 않습니다." />
+          </Border>
+
+          <TextBlock FontSize="10.5" TextWrapping="Wrap" Foreground="{DynamicResource SiDangerBrush}"
+                     Text="{Binding Status}" />
+
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Classes="secondary" Command="{Binding CancelCommand}" Content="취소" />
+            <Button Classes="primary" Command="{Binding SaveCommand}" Content="암호화해 저장" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Border>
+  </Grid>
+</UserControl>

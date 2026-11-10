@@ -1,0 +1,100 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:silaa.ViewModels"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="silaa.UI.SettingsMenuView"
+             x:DataType="vm:NavigationViewModel"
+             Width="{DynamicResource SiSidebarWidth}"
+             HorizontalAlignment="Left"
+             VerticalAlignment="Stretch">
+  <UserControl.Styles>
+    <Style Selector="Button.settings-nav">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource SiMutedBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="11,10" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Button.settings-nav.selected">
+      <Setter Property="Background" Value="{DynamicResource SiRaisedBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SiForegroundBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.settings-nav.selected materialIcons|MaterialIcon.ui-icon">
+      <Setter Property="Foreground" Value="{DynamicResource SiForegroundBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Background="{DynamicResource SiPanelBrush}"
+          BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="0,0,1,0">
+    <Grid RowDefinitions="Auto,*,Auto">
+      <StackPanel Margin="18,20,16,18" Spacing="3">
+        <TextBlock FontSize="15" FontWeight="SemiBold" Text="설정" />
+        <TextBlock FontSize="9.5" LetterSpacing="1.1"
+                   Foreground="{DynamicResource SiMutedBrush}" Text="SILAA PREFERENCES" />
+      </StackPanel>
+
+      <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="10,0" Spacing="3">
+        <TextBlock Margin="9,2,0,7" FontSize="9.5" FontWeight="SemiBold"
+                   LetterSpacing="1.1" Foreground="{DynamicResource SiMutedBrush}" Text="CONNECTION" />
+        <Button Classes="settings-nav" Classes.selected="{Binding IsSettings}"
+                Command="{Binding OpenSettingsCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <materialIcons:MaterialIcon Classes="ui-icon" Kind="ServerOutline" />
+            <TextBlock VerticalAlignment="Center" Text="LLM 연결" />
+          </StackPanel>
+        </Button>
+
+        <TextBlock Margin="9,18,0,7" FontSize="9.5" FontWeight="SemiBold"
+                   LetterSpacing="1.1" Foreground="{DynamicResource SiMutedBrush}" Text="PERMISSIONS" />
+        <Button Classes="settings-nav" Classes.selected="{Binding IsFolderSettings}"
+                Command="{Binding OpenFolderSettingsCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <materialIcons:MaterialIcon Classes="ui-icon" Kind="FolderOutline" />
+            <TextBlock VerticalAlignment="Center" Text="접근 허용 폴더" />
+          </StackPanel>
+        </Button>
+        <Button Classes="settings-nav" Classes.selected="{Binding IsSecuritySettings}"
+                Command="{Binding OpenSecuritySettingsCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <materialIcons:MaterialIcon Classes="ui-icon" Kind="ShieldCheckOutline" />
+            <TextBlock VerticalAlignment="Center" Text="Agent 보안" />
+          </StackPanel>
+        </Button>
+
+        <TextBlock Margin="9,18,0,7" FontSize="9.5" FontWeight="SemiBold"
+                   LetterSpacing="1.1" Foreground="{DynamicResource SiMutedBrush}" Text="DATA" />
+        <Button Classes="settings-nav" Classes.selected="{Binding IsMemory}"
+                Command="{Binding OpenMemoryCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <materialIcons:MaterialIcon Classes="ui-icon" Kind="BookOpenOutline" />
+            <TextBlock VerticalAlignment="Center" Text="기억" />
+          </StackPanel>
+        </Button>
+        <Button Classes="settings-nav" Classes.selected="{Binding IsVault}"
+                Command="{Binding OpenVaultCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <materialIcons:MaterialIcon Classes="ui-icon" Kind="LockOutline" />
+            <TextBlock VerticalAlignment="Center" Text="Vault" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+      </ScrollViewer>
+
+      <StackPanel Grid.Row="2" Margin="10,10,10,14" Spacing="8">
+        <Border Height="1" Background="{DynamicResource SiDividerBrush}" />
+        <Button Classes="settings-nav" Command="{Binding OpenHomeCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <materialIcons:MaterialIcon Classes="ui-icon" Kind="ArrowLeft" />
+            <TextBlock VerticalAlignment="Center" Text="메인 메뉴" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+    </Grid>
+  </Border>
+</UserControl>

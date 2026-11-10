@@ -1,0 +1,61 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:silaa.UI"
+             xmlns:vm="using:silaa.ViewModels"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="silaa.UI.BrowserPage"
+             x:DataType="vm:BrowserViewModel"
+             Background="{DynamicResource SiBackgroundBrush}">
+  <UserControl.Styles>
+    <Style Selector="Button.secondary">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource SiMutedBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="Padding" Value="10,6" />
+    </Style>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="{DynamicResource SiAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SiOnAccentBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="15,8" />
+    </Style>
+  </UserControl.Styles>
+  <Grid ColumnDefinitions="Auto,*">
+    <ui:MainMenuView DataContext="{Binding Navigation}" />
+    <Grid Grid.Column="1" RowDefinitions="Auto,*">
+      <Border Background="{DynamicResource SiGlassBrush}"
+              BorderBrush="{DynamicResource SiGlassBorderBrush}" BorderThickness="0,0,0,1">
+        <Grid ColumnDefinitions="Auto,*,Auto" Margin="10,8" ColumnSpacing="8">
+          <Button Classes="secondary" MinWidth="38" Padding="9,6"
+                  Command="{Binding ReturnToPageCommand}"
+                  ToolTip.Tip="이전 화면으로 돌아가기">
+            <materialIcons:MaterialIcon Classes="ui-icon foreground" Kind="ArrowLeft" />
+          </Button>
+          <Grid Grid.Column="1" ColumnDefinitions="Auto,Auto,Auto,*,Auto" ColumnSpacing="7">
+            <Button Classes="secondary" MinWidth="36" Command="{Binding GoBackCommand}" ToolTip.Tip="뒤로">
+              <materialIcons:MaterialIcon Classes="ui-icon foreground" Kind="ChevronLeft" />
+            </Button>
+            <Button Grid.Column="1" Classes="secondary" MinWidth="36" Command="{Binding GoForwardCommand}" ToolTip.Tip="앞으로">
+              <materialIcons:MaterialIcon Classes="ui-icon foreground" Kind="ChevronRight" />
+            </Button>
+            <Button Grid.Column="2" Classes="secondary" MinWidth="36" Command="{Binding RefreshCommand}" ToolTip.Tip="새로고침">
+              <materialIcons:MaterialIcon Classes="ui-icon foreground" Kind="Refresh" />
+            </Button>
+            <TextBox Grid.Column="3" VerticalContentAlignment="Center"
+                     Text="{Binding Address, Mode=TwoWay}" KeyDown="OnAddressKeyDown"
+                     PlaceholderText="URL 또는 로컬 개발 서버 주소" />
+            <Button Grid.Column="4" Classes="primary" Command="{Binding NavigateCommand}" Content="이동" />
+          </Grid>
+          <Border Grid.Column="2" Padding="9,4" CornerRadius="12" VerticalAlignment="Center"
+                  MaxWidth="90" Background="{DynamicResource SiRaisedBrush}">
+            <TextBlock FontSize="10.5" Text="{Binding Status}" />
+          </Border>
+        </Grid>
+      </Border>
+      <NativeWebView x:Name="Browser" Grid.Row="1" />
+    </Grid>
+  </Grid>
+</UserControl>

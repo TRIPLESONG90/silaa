@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/.vs/
+*.user
+publish/
+artifacts/
+*.zip
+*.sha256
+*.log
+.silaa/
+.localforge/

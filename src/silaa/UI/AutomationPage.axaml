@@ -1,0 +1,173 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:silaa.UI"
+             xmlns:vm="using:silaa.ViewModels"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="silaa.UI.AutomationPage"
+             x:DataType="vm:AutomationViewModel"
+             Background="{DynamicResource SiBackgroundBrush}">
+  <UserControl.Styles>
+    <Style Selector="Button.secondary">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource SiMutedBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="Padding" Value="10,6" />
+    </Style>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="{DynamicResource SiAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SiOnAccentBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="Padding" Value="12,7" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+  </UserControl.Styles>
+  <Grid ColumnDefinitions="Auto,*">
+    <ui:MainMenuView DataContext="{Binding Navigation}" />
+    <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled">
+      <StackPanel MaxWidth="{DynamicResource SiContentMaxWidth}" Margin="{DynamicResource SiPageMargin}" Spacing="18"
+                  HorizontalAlignment="Stretch">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+          <StackPanel Spacing="6">
+            <TextBlock FontSize="9.5" FontWeight="SemiBold" LetterSpacing="1.2"
+                       Foreground="{DynamicResource SiMutedBrush}" Text="SCHEDULED AUTOMATION" />
+            <TextBlock FontSize="24" FontWeight="SemiBold" Text="예약 작업" />
+            <TextBlock FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
+                       Text="알림, 반복 실행과 백그라운드 Agent 작업을 한곳에서 관리합니다." />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
+            <Border Padding="9,5" CornerRadius="12" Background="{DynamicResource SiRaisedBrush}">
+              <TextBlock FontSize="10.5" Text="{Binding ActiveLabel}" />
+            </Border>
+            <Button Classes="secondary" Command="{Binding RefreshCommand}" Content="새로고침" />
+            <Button Classes="secondary" Command="{Binding CreateScheduleCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <materialIcons:MaterialIcon Classes="ui-icon" Kind="CalendarPlusOutline" />
+                <TextBlock VerticalAlignment="Center" Text="스케줄 생성" />
+              </StackPanel>
+            </Button>
+            <Button Classes="primary" Command="{Binding CreateTaskCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <materialIcons:MaterialIcon Classes="ui-icon on-accent" Kind="Plus" />
+                <TextBlock VerticalAlignment="Center" Text="작업 생성" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </Grid>
+
+        <Border Padding="16" CornerRadius="10" Background="{DynamicResource SiPanelBrush}"
+                BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="1">
+          <StackPanel Spacing="5">
+            <TextBlock FontSize="12.5" FontWeight="SemiBold" TextWrapping="Wrap"
+                       Text="생성 버튼을 누르면 Agent가 한 번에 하나씩 질문하고, 최종 확인 후 작업을 자동 등록합니다." />
+            <TextBlock FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
+                       Text="단순 알람은 표시 문구와 시각을 확인해 로컬 알림으로, 반복 작업은 스케줄로 등록합니다." />
+          </StackPanel>
+        </Border>
+        <TextBlock FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
+                   Text="{Binding Error}" />
+
+        <StackPanel Margin="2,8,2,0" Spacing="4">
+          <TextBlock FontSize="15" FontWeight="SemiBold" Text="cron 스케줄" />
+          <TextBlock FontSize="11" Foreground="{DynamicResource SiMutedBrush}"
+                     Text="컴퓨터의 로컬 시간대를 기준으로 실행합니다." />
+        </StackPanel>
+        <Border IsVisible="{Binding HasNoSchedules}" Padding="24" CornerRadius="12"
+                Background="{DynamicResource SiPanelBrush}" BorderBrush="{DynamicResource SiDividerBrush}"
+                BorderThickness="1">
+          <StackPanel HorizontalAlignment="Center" Spacing="7">
+            <materialIcons:MaterialIcon Classes="ui-icon" Width="21" Height="21"
+                                        HorizontalAlignment="Center" Kind="CalendarClockOutline" />
+            <TextBlock HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold"
+                       Text="등록된 cron 작업이 없습니다" />
+            <TextBlock TextAlignment="Center" TextWrapping="Wrap" FontSize="11.5"
+                       Foreground="{DynamicResource SiMutedBrush}"
+                       Text="예: ‘평일 오전 9시에 빌드와 테스트를 실행해’라고 Agent에게 요청하세요." />
+          </StackPanel>
+        </Border>
+        <ItemsControl ItemsSource="{Binding Schedules}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ScheduleCardViewModel">
+              <Border Padding="15" CornerRadius="10" Background="{DynamicResource SiPanelBrush}"
+                      BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="1">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                  <StackPanel Spacing="5">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock FontSize="13.5" FontWeight="SemiBold" Text="{Binding Name}" />
+                      <Border Padding="8,3" CornerRadius="10" Background="{DynamicResource SiRaisedBrush}">
+                        <TextBlock FontSize="9.5" Text="{Binding State}" />
+                      </Border>
+                    </StackPanel>
+                    <SelectableTextBlock FontSize="11" FontFamily="Cascadia Mono, Consolas, monospace"
+                                         Text="{Binding Cron}" />
+                    <TextBlock FontSize="11.5" MaxHeight="38" TextWrapping="Wrap"
+                               Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Instruction}" />
+                    <TextBlock FontSize="10.5" Foreground="{DynamicResource SiMutedBrush}" Text="{Binding NextRun}" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Button Classes="secondary" Command="{Binding ToggleCommand}" Content="{Binding ToggleLabel}" />
+                    <Button Classes="icon-action danger" Command="{Binding RemoveCommand}" ToolTip.Tip="예약 작업 삭제">
+                      <materialIcons:MaterialIcon Classes="ui-icon delete-icon" Kind="DeleteOutline" />
+                    </Button>
+                  </StackPanel>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <StackPanel Margin="2,8,2,0" Spacing="4">
+          <TextBlock FontSize="15" FontWeight="SemiBold" Text="최근 실행" />
+          <TextBlock FontSize="11" Foreground="{DynamicResource SiMutedBrush}"
+                     Text="완료된 작업은 결과 세션을 열어 전체 기록을 확인할 수 있습니다." />
+        </StackPanel>
+        <Border IsVisible="{Binding HasNoTasks}" Padding="24" CornerRadius="12"
+                Background="{DynamicResource SiPanelBrush}" BorderBrush="{DynamicResource SiDividerBrush}"
+                BorderThickness="1">
+          <StackPanel HorizontalAlignment="Center" Spacing="7">
+            <materialIcons:MaterialIcon Classes="ui-icon" Width="21" Height="21"
+                                        HorizontalAlignment="Center" Kind="ProgressClock" />
+            <TextBlock HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold"
+                       Text="백그라운드 실행 기록이 없습니다" />
+            <TextBlock TextAlignment="Center" TextWrapping="Wrap" FontSize="11.5"
+                       Foreground="{DynamicResource SiMutedBrush}"
+                       Text="긴 작업을 Agent에게 백그라운드로 넘기면 이곳에서 상태를 추적합니다." />
+          </StackPanel>
+        </Border>
+        <ItemsControl ItemsSource="{Binding Tasks}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:BackgroundTaskCardViewModel">
+              <Border Padding="15" CornerRadius="10" Background="{DynamicResource SiPanelBrush}"
+                      BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="1">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                  <StackPanel Spacing="5">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock FontSize="13.5" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding Name}" />
+                      <Border Padding="8,3" CornerRadius="10" Background="{DynamicResource SiRaisedBrush}">
+                        <TextBlock FontSize="9.5" Text="{Binding State}" />
+                      </Border>
+                    </StackPanel>
+                    <TextBlock FontSize="11.5" MaxHeight="48" TextWrapping="Wrap"
+                               Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Preview}" />
+                    <TextBlock FontSize="9.5" FontFamily="Cascadia Mono, Consolas, monospace"
+                               Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Metadata}" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Button IsVisible="{Binding CanCancel}" Classes="secondary"
+                            Command="{Binding CancelCommand}" Content="취소" />
+                    <Button IsVisible="{Binding CanOpen}" Classes="secondary"
+                            Command="{Binding OpenCommand}" Content="결과 열기" />
+                  </StackPanel>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

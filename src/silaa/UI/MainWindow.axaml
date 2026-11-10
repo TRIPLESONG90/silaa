@@ -1,0 +1,307 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="using:silaa.UI"
+        xmlns:vm="using:silaa.ViewModels"
+        xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+        x:Class="silaa.UI.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="silaa"
+        Width="1240"
+        Height="800"
+        MinWidth="980"
+        MinHeight="560"
+        Background="{DynamicResource SiBackgroundBrush}"
+        Foreground="{DynamicResource SiForegroundBrush}"
+        FontFamily="Pretendard, Segoe UI Variable Text, Segoe UI, Malgun Gothic">
+  <Window.Styles>
+    <Style Selector="Button.shell-ghost">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource SiMutedBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="Padding" Value="10,8" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Button.shell-primary">
+      <Setter Property="Background" Value="{DynamicResource SiAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SiOnAccentBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="13,9" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="MinHeight" Value="36" />
+    </Style>
+    <Style Selector="Button.session-action">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource SiMutedBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="Padding" Value="10,8" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Button.shell-stop">
+      <Setter Property="Background" Value="{DynamicResource SiDangerSoftBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SiDangerBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="12,9" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+  </Window.Styles>
+
+  <Grid x:Name="RootHost" RowDefinitions="*,Auto">
+    <Grid x:Name="PageHost" Grid.Row="0">
+      <Grid x:Name="ChatShell" ColumnDefinitions="Auto,*">
+        <Border x:Name="ChatSidebar" Width="{DynamicResource SiSidebarWidth}" Background="{DynamicResource SiPanelBrush}"
+                BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="0,0,1,0">
+          <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
+            <Grid Margin="16,18,14,13" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
+              <Border Width="28" Height="28" CornerRadius="8" Background="{DynamicResource SiAccentBrush}">
+                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Foreground="{DynamicResource SiOnAccentBrush}"
+                           FontSize="10.5" FontWeight="Bold" Text="Si" />
+              </Border>
+              <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                <TextBlock FontSize="14" FontWeight="SemiBold" Text="silaa" />
+                <TextBlock x:Name="SidebarContext" FontSize="9.5" TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource SiMutedBrush}" Text="{Binding SidebarContext}" />
+              </StackPanel>
+              <materialIcons:MaterialIcon Grid.Column="2" Classes="ui-icon" Width="15" Height="15" Kind="ChevronDown" />
+            </Grid>
+
+            <StackPanel Grid.Row="1" Margin="10,0,10,10" Spacing="6">
+              <Button Classes="shell-ghost" Command="{Binding OpenHomeCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <materialIcons:MaterialIcon Classes="ui-icon" Kind="HomeOutline" />
+                  <TextBlock VerticalAlignment="Center" Text="워크스페이스" />
+                </StackPanel>
+              </Button>
+              <Button Classes="shell-primary" HorizontalContentAlignment="Left"
+                      IsEnabled="{Binding CanStartSession}" Command="{Binding NewSessionCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <materialIcons:MaterialIcon Classes="ui-icon on-accent" Kind="Plus" />
+                  <TextBlock VerticalAlignment="Center" Text="새 대화" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+
+            <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="18,8,10,7">
+              <TextBlock VerticalAlignment="Center" FontSize="9.5" FontWeight="SemiBold"
+                         LetterSpacing="1.05" Foreground="{DynamicResource SiMutedBrush}" Text="SESSIONS" />
+              <Button Grid.Column="1" Classes="shell-ghost" HorizontalAlignment="Right"
+                      Padding="8,4" FontSize="10.5"
+                      Command="{Binding RefreshSessionsCommand}" Content="새로고침" />
+            </Grid>
+
+            <ScrollViewer Grid.Row="3" Margin="7,0,7,8" HorizontalScrollBarVisibility="Disabled">
+              <StackPanel x:Name="SessionList" Spacing="2" />
+            </ScrollViewer>
+
+            <StackPanel Grid.Row="4" Margin="10,8,10,14" Spacing="3">
+              <Border Height="1" Margin="3,0,3,7" Background="{DynamicResource SiDividerBrush}" />
+              <Button x:Name="ResourcesButton" Classes="shell-ghost" IsVisible="{Binding HasActiveProject}"
+                      Command="{Binding OpenResourcesCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <materialIcons:MaterialIcon Classes="ui-icon" Kind="FileDocumentOutline" />
+                  <TextBlock VerticalAlignment="Center" Text="프로젝트 리소스" />
+                </StackPanel>
+              </Button>
+              <Button x:Name="ProjectMemoryButton" Classes="shell-ghost" IsVisible="{Binding HasActiveProject}"
+                      Command="{Binding OpenProjectMemoryCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <materialIcons:MaterialIcon Classes="ui-icon" Kind="BookOpenOutline" />
+                  <TextBlock VerticalAlignment="Center" Text="프로젝트 기억" />
+                </StackPanel>
+              </Button>
+              <Button Classes="shell-ghost" Command="{Binding OpenFolderAccessCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <materialIcons:MaterialIcon Classes="ui-icon" Kind="FolderOutline" />
+                  <TextBlock VerticalAlignment="Center" Text="접근 폴더" />
+                </StackPanel>
+              </Button>
+              <Button x:Name="SettingsButton" Classes="shell-ghost" Command="{Binding OpenSettingsCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <materialIcons:MaterialIcon Classes="ui-icon" Kind="ServerOutline" />
+                  <TextBlock VerticalAlignment="Center" Text="LLM 연결" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <Grid x:Name="ChatArea" Grid.Column="1" RowDefinitions="Auto,*,Auto">
+          <Border Background="{DynamicResource SiGlassBrush}"
+                  BorderBrush="{DynamicResource SiGlassBorderBrush}" BorderThickness="0,0,0,1">
+            <Grid Margin="22,12" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="10">
+              <StackPanel Spacing="2">
+                <TextBlock x:Name="PageTitle" FontSize="15" FontWeight="SemiBold"
+                           Text="{Binding PageTitle}" />
+                <TextBlock x:Name="StatusText" FontSize="10.5" TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource SiMutedBrush}" Text="{Binding StatusText}" />
+              </StackPanel>
+              <Button x:Name="SurveyExitButton" Grid.Column="1" Classes="shell-ghost" Padding="9,6"
+                      IsVisible="False" VerticalAlignment="Center" HorizontalAlignment="Right"
+                      Content="설문 나가기" />
+              <Button x:Name="CopyConversationButton" Grid.Column="2" Classes="shell-ghost" Padding="9,6"
+                      VerticalAlignment="Center" HorizontalAlignment="Right"
+                      Command="{Binding CopyConversationCommand}" Content="전체 복사"
+                      ToolTip.Tip="현재 대화의 사용자·Agent 메시지를 Markdown으로 복사합니다." />
+              <Border Grid.Column="3" Padding="10,6" CornerRadius="12"
+                      Background="{DynamicResource SiRaisedBrush}" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <Border x:Name="ConnectionDot" Width="6" Height="6" CornerRadius="3"
+                          VerticalAlignment="Center" />
+                  <TextBlock x:Name="ModelText" FontSize="10.5" VerticalAlignment="Center"
+                             TextTrimming="CharacterEllipsis" MaxWidth="310"
+                             Foreground="{DynamicResource SiMutedBrush}" Text="{Binding ModelText}" />
+                </StackPanel>
+              </Border>
+            </Grid>
+          </Border>
+
+          <ScrollViewer x:Name="MessageScroll" Grid.Row="1"
+                        HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                        HorizontalContentAlignment="Stretch">
+            <StackPanel x:Name="MessageList" Margin="40,26,40,30" Spacing="20"
+                        MaxWidth="{DynamicResource SiContentMaxWidth}" HorizontalAlignment="Stretch" />
+          </ScrollViewer>
+
+          <Border x:Name="ComposerHost" Grid.Row="2" Margin="32,8,32,17" Padding="12,10" CornerRadius="13"
+                  MaxWidth="{DynamicResource SiContentMaxWidth}" HorizontalAlignment="Stretch"
+                  Background="{DynamicResource SiGlassBrush}"
+                  BorderBrush="{DynamicResource SiGlassBorderBrush}" BorderThickness="1">
+            <StackPanel Spacing="7">
+              <WrapPanel x:Name="AttachmentList" IsVisible="False" Orientation="Horizontal" />
+              <TextBox x:Name="Editor" Classes="composer" AcceptsReturn="True" TextWrapping="Wrap"
+                       MinHeight="46" MaxHeight="170" Background="Transparent" BorderThickness="0"
+                       IsEnabled="{Binding CanCompose}"
+                       Padding="3,4" FontSize="13" Text="{Binding EditorText, Mode=TwoWay}"
+                       PlaceholderText="{Binding ComposerPlaceholder}" />
+              <Grid MinHeight="36" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8"
+                    VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                  <Border IsVisible="{Binding IsRunning}" Padding="8,3" CornerRadius="10"
+                          Background="{DynamicResource SiRaisedBrush}">
+                    <TextBlock FontSize="9.5" FontWeight="SemiBold" Text="응답 중" />
+                  </Border>
+                  <Border IsVisible="{Binding HasPendingPrompts}" Padding="8,3" CornerRadius="10"
+                          Background="{DynamicResource SiRaisedBrush}">
+                    <TextBlock FontSize="9.5" Text="{Binding PendingPromptLabel}" />
+                  </Border>
+                  <TextBlock FontSize="10.5" Foreground="{DynamicResource SiMutedBrush}"
+                             Text="{Binding ComposerHint}" />
+                </StackPanel>
+                <Button x:Name="StopButton" Grid.Column="1" Classes="shell-stop"
+                        HorizontalAlignment="Right" VerticalAlignment="Center"
+                        IsVisible="{Binding IsRunning}" Command="{Binding StopCommand}" Content="중지"
+                        ToolTip.Tip="현재 응답과 대기 중인 추가 지시를 중지합니다." />
+                <Button x:Name="SendButton" Grid.Column="2" Classes="shell-primary"
+                        MinWidth="78" HorizontalAlignment="Right" VerticalAlignment="Center"
+                        IsEnabled="{Binding CanCompose}" Command="{Binding SendOrCancelCommand}"
+                        Content="{Binding SendLabel}"
+                        ToolTip.Tip="응답 중에는 현재 요청을 정리하고 새 지시로 이어갑니다." />
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <Border x:Name="DropOverlay" Grid.RowSpan="3" ZIndex="40" IsVisible="False"
+                  IsHitTestVisible="False" Margin="18" CornerRadius="16"
+                  Background="{DynamicResource SiDropOverlayBrush}"
+                  BorderBrush="{DynamicResource SiGlassBorderBrush}" BorderThickness="1">
+            <Border HorizontalAlignment="Center" VerticalAlignment="Center"
+                    MinWidth="360" Padding="28,24" CornerRadius="14"
+                    Background="{DynamicResource SiPanelBrush}"
+                    BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="1">
+              <StackPanel HorizontalAlignment="Center" Spacing="10">
+                <Border Width="52" Height="52" CornerRadius="14"
+                        HorizontalAlignment="Center" Background="{DynamicResource SiAccentSoftBrush}">
+                  <materialIcons:MaterialIcon Classes="ui-icon foreground" Width="25" Height="25"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Kind="FileUploadOutline" />
+                </Border>
+                <TextBlock HorizontalAlignment="Center" FontSize="16" FontWeight="SemiBold"
+                           Text="파일을 놓아 대화에 첨부" />
+                <TextBlock HorizontalAlignment="Center" FontSize="11"
+                           Foreground="{DynamicResource SiMutedBrush}"
+                           Text="DOCX · XLSX · PPTX · PDF · 코드와 일반 파일" />
+              </StackPanel>
+            </Border>
+          </Border>
+        </Grid>
+
+        <Border x:Name="InspectorHost" Grid.Column="1" ZIndex="20" Width="390"
+                HorizontalAlignment="Right" VerticalAlignment="Stretch"
+                Background="{DynamicResource SiGlassBrush}"
+                BorderBrush="{DynamicResource SiGlassBorderBrush}" BorderThickness="1,0,0,0"
+                BoxShadow="-10 0 28 0 #22000000" IsVisible="False">
+          <Grid RowDefinitions="Auto,*">
+            <Grid Margin="17,13,10,9" ColumnDefinitions="*,Auto">
+              <TextBlock VerticalAlignment="Center" FontSize="9.5" FontWeight="SemiBold"
+                         LetterSpacing="1.1" Foreground="{DynamicResource SiMutedBrush}"
+                         Text="PROJECT INSPECTOR" />
+              <Button Grid.Column="1" Classes="shell-ghost" HorizontalAlignment="Right" Padding="8,4"
+                      Command="{Binding CloseInspectorCommand}" Content="닫기" />
+            </Grid>
+            <ContentControl x:Name="InspectorContent" Grid.Row="1" />
+          </Grid>
+        </Border>
+      </Grid>
+    </Grid>
+    <Border Grid.Row="1" Height="25" Background="{DynamicResource SiPanelBrush}"
+            BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="0,1,0,0">
+      <Grid Margin="10,0,8,0" ColumnDefinitions="Auto,*,Auto">
+        <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+          <Border Width="5" Height="5" CornerRadius="3" Background="#3DD68C" />
+          <TextBlock FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}" Text="로컬 하네스" />
+        </StackPanel>
+        <TextBlock Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                   FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}" Text="Microsoft Agent Framework" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+          <TextBlock FontSize="9.5" VerticalAlignment="Center"
+                     Foreground="{DynamicResource SiMutedBrush}" Text="추론" />
+          <ComboBox x:Name="ReasoningEffortSelector" Width="88" Height="21" MinHeight="21"
+                    Padding="7,0" FontSize="9.5" VerticalContentAlignment="Center"
+                    ItemsSource="{Binding ReasoningEfforts}"
+                    SelectedItem="{Binding SelectedReasoningEffort, Mode=TwoWay}"
+                    ToolTip.Tip="활성 LLM 연결의 추론 수준 · 변경 사항은 다음 요청부터 적용" />
+          <Border Width="1" Height="13" Background="{DynamicResource SiDividerBrush}" />
+          <Button x:Name="ResponseStatusButton" Padding="8,2" MinHeight="20"
+                  Background="Transparent" BorderThickness="0" CornerRadius="5">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Border x:Name="ResponseStatusDot" Width="5" Height="5" CornerRadius="3"
+                      VerticalAlignment="Center" Background="{DynamicResource SiMutedBrush}" />
+              <TextBlock x:Name="ResponseStatusText" FontSize="9.5" VerticalAlignment="Center"
+                         Foreground="{DynamicResource SiMutedBrush}" Text="대기 중" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Border x:Name="ResponseSessionsPopup" Grid.Row="0" ZIndex="90" IsVisible="False"
+            Width="330" MaxHeight="360" Margin="0,0,10,10"
+            HorizontalAlignment="Right" VerticalAlignment="Bottom"
+            Padding="10" CornerRadius="10"
+            Background="{DynamicResource SiGlassBrush}"
+            BorderBrush="{DynamicResource SiGlassBorderBrush}" BorderThickness="1"
+            BoxShadow="0 12 32 0 #33000000">
+      <StackPanel Spacing="8">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock FontSize="11.5" FontWeight="SemiBold" Text="응답 중인 세션" />
+          <Button x:Name="CloseResponseSessionsButton" Grid.Column="1" Padding="6,2"
+                  Background="Transparent" BorderThickness="0" Content="닫기" FontSize="9.5" />
+        </Grid>
+        <ScrollViewer MaxHeight="290" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel x:Name="ResponseSessionList" Spacing="4" />
+        </ScrollViewer>
+      </StackPanel>
+    </Border>
+    <ui:SiToastHost x:Name="ToastHost" Grid.RowSpan="2" ZIndex="100" />
+    <ui:SiDialogHost x:Name="DialogHost" Grid.RowSpan="2" ZIndex="200" />
+  </Grid>
+</Window>

@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- The installed .NET 10 RC SDK incorrectly prunes direct package references. -->
+    <RestoreEnablePackagePruning Condition="'$(NETCoreSdkVersion)' == '10.0.100-rc.1.25451.107'">false</RestoreEnablePackagePruning>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,100 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:silaa.UI"
+             xmlns:vm="using:silaa.ViewModels"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="silaa.UI.MySchedulePage"
+             x:DataType="vm:MyScheduleViewModel"
+             Background="{DynamicResource SiBackgroundBrush}">
+  <Grid ColumnDefinitions="Auto,*">
+    <ui:MainMenuView DataContext="{Binding Navigation}" />
+    <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled">
+      <StackPanel MaxWidth="{DynamicResource SiContentMaxWidth}" Margin="{DynamicResource SiPageMargin}"
+                  HorizontalAlignment="Stretch" Spacing="18">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+          <StackPanel Spacing="6">
+            <TextBlock FontSize="9.5" FontWeight="SemiBold" LetterSpacing="1.2"
+                       Foreground="{DynamicResource SiMutedBrush}" Text="MY SCHEDULE" />
+            <TextBlock FontSize="24" FontWeight="SemiBold" Text="내 일정" />
+            <TextBlock FontSize="11.5" Foreground="{DynamicResource SiMutedBrush}"
+                       Text="약속, 행사, 마감처럼 실제 생활의 일정을 날짜순으로 확인합니다." />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
+            <Border Padding="9,5" CornerRadius="12" Background="{DynamicResource SiRaisedBrush}">
+              <TextBlock FontSize="10.5" Text="{Binding Summary}" />
+            </Border>
+            <Button Classes="secondary" Command="{Binding RefreshCommand}" Content="새로고침" />
+            <Button Classes="primary" Command="{Binding CreateScheduleCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <materialIcons:MaterialIcon Classes="ui-icon on-accent" Kind="CalendarPlusOutline" />
+                <TextBlock VerticalAlignment="Center" Text="일정 추가" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </Grid>
+
+        <TextBlock FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource SiDangerBrush}"
+                   Text="{Binding Error}" />
+
+        <Border IsVisible="{Binding HasNoItems}" Padding="34" CornerRadius="13"
+                Background="{DynamicResource SiPanelBrush}"
+                BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="1">
+          <StackPanel HorizontalAlignment="Center" Spacing="8">
+            <materialIcons:MaterialIcon Classes="ui-icon" Width="24" Height="24"
+                                        HorizontalAlignment="Center" Kind="CalendarMonthOutline" />
+            <TextBlock HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold"
+                       Text="등록된 일정이 없습니다" />
+            <TextBlock TextAlignment="Center" FontSize="11.5" Foreground="{DynamicResource SiMutedBrush}"
+                       Text="일정 추가를 누르면 Agent가 날짜와 시간을 묻습니다. 필요한 경우에만 알람이나 준비 작업을 제안합니다." />
+          </StackPanel>
+        </Border>
+
+        <ItemsControl ItemsSource="{Binding Items}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Spacing="9" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ScheduleAgendaItemViewModel">
+              <Border Padding="15" CornerRadius="11" Background="{DynamicResource SiPanelBrush}"
+                      BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="1">
+                <Grid ColumnDefinitions="58,*,Auto,Auto" ColumnSpacing="14">
+                  <Border Width="58" Height="58" CornerRadius="12" Background="{DynamicResource SiRaisedBrush}">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="0">
+                      <TextBlock HorizontalAlignment="Center" FontSize="18" FontWeight="SemiBold" Text="{Binding Day}" />
+                      <TextBlock HorizontalAlignment="Center" FontSize="9.5"
+                                 Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Month}" />
+                    </StackPanel>
+                  </Border>
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock FontSize="13.5" FontWeight="SemiBold" Text="{Binding Title}" />
+                      <Border Padding="7,2" CornerRadius="8" Background="{DynamicResource SiAccentSoftBrush}">
+                        <TextBlock FontSize="9" Text="{Binding Kind}" />
+                      </Border>
+                      <Border IsVisible="{Binding HasReminder}" Padding="7,2" CornerRadius="8"
+                              Background="{DynamicResource SiRaisedBrush}">
+                        <TextBlock FontSize="9" Text="알람" />
+                      </Border>
+                      <Border IsVisible="{Binding HasPreparationTask}" Padding="7,2" CornerRadius="8"
+                              Background="{DynamicResource SiRaisedBrush}">
+                        <TextBlock FontSize="9" Text="준비 작업" />
+                      </Border>
+                    </StackPanel>
+                    <TextBlock FontSize="11" TextWrapping="Wrap" MaxHeight="36"
+                               Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Description}" />
+                  </StackPanel>
+                  <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="11.5"
+                             Foreground="{DynamicResource SiMutedBrush}" Text="{Binding DateLabel}" />
+                  <Button Grid.Column="3" Classes="icon-action danger" Command="{Binding DeleteCommand}"
+                          ToolTip.Tip="일정 삭제" VerticalAlignment="Center">
+                    <materialIcons:MaterialIcon Classes="ui-icon delete-icon" Kind="DeleteOutline" />
+                  </Button>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

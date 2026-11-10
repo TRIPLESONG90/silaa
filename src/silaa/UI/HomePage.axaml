@@ -1,0 +1,299 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:silaa.UI"
+             xmlns:vm="using:silaa.ViewModels"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="silaa.UI.HomePage"
+             x:DataType="vm:HomePageViewModel"
+             Background="{DynamicResource SiBackgroundBrush}">
+  <UserControl.Styles>
+    <Style Selector="Button.nav-item">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource SiMutedBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="11,9" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Button.nav-item.selected">
+      <Setter Property="Background" Value="{DynamicResource SiRaisedBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SiForegroundBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="{DynamicResource SiAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SiOnAccentBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="15,9" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.launch-card">
+      <Setter Property="MinHeight" Value="132" />
+      <Setter Property="Padding" Value="16,15" />
+      <Setter Property="CornerRadius" Value="11" />
+      <Setter Property="Background" Value="{DynamicResource SiPanelBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SiForegroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Button.secondary">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource SiForegroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="Padding" Value="10,7" />
+    </Style>
+    <Style Selector="Button.project-card">
+      <Setter Property="Background" Value="{DynamicResource SiPanelBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="15,13" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Button.app-card">
+      <Setter Property="MinHeight" Value="112" />
+      <Setter Property="Padding" Value="15" />
+      <Setter Property="CornerRadius" Value="11" />
+      <Setter Property="Background" Value="{DynamicResource SiPanelBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SiForegroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid ColumnDefinitions="Auto,*">
+    <ui:MainMenuView DataContext="{Binding Navigation}" />
+
+    <Grid Grid.Column="1" RowDefinitions="Auto,*">
+      <Border Background="{DynamicResource SiGlassBrush}"
+              BorderBrush="{DynamicResource SiGlassBorderBrush}" BorderThickness="0,0,0,1">
+        <Grid Margin="22,13" ColumnDefinitions="*,Auto" ColumnSpacing="18">
+          <StackPanel Spacing="2">
+            <TextBlock FontSize="15" FontWeight="SemiBold" Text="{Binding PageTitle}" />
+            <TextBlock FontSize="10.5" Foreground="{DynamicResource SiMutedBrush}"
+                       Text="{Binding PageSubtitle}" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <Button Classes="secondary" Command="{Binding RefreshCommand}" Content="새로고침" />
+            <Button Classes="secondary" IsVisible="{Binding AppsOnly}"
+                    Command="{Binding OpenAppConnectionsCommand}" Content="앱 연결" />
+            <Button Classes="primary" IsVisible="{Binding IsCatalogPage}"
+                    Command="{Binding CreateProjectCommand}" Content="{Binding CreateLabel}" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel MaxWidth="{DynamicResource SiContentMaxWidth}" Margin="{DynamicResource SiPageMargin}" Spacing="22"
+                    HorizontalAlignment="Stretch">
+          <StackPanel Spacing="18" IsVisible="{Binding IsDashboard}">
+            <StackPanel Spacing="6">
+              <TextBlock FontSize="23" FontWeight="SemiBold" Text="{Binding Greeting}" />
+              <TextBlock FontSize="11.5" Foreground="{DynamicResource SiMutedBrush}"
+                         Text="원하는 시작 방식을 고르면 silaa가 다음 단계를 안내합니다." />
+            </StackPanel>
+
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+              <Button Grid.Column="0" Classes="launch-card" Command="{Binding BeginConversationCommand}">
+                <Grid RowDefinitions="Auto,*,Auto">
+                  <Border Width="36" Height="36" CornerRadius="9" HorizontalAlignment="Left"
+                          Background="{DynamicResource SiRaisedBrush}">
+                    <materialIcons:MaterialIcon Classes="ui-icon foreground" Width="18" Height="18"
+                                                HorizontalAlignment="Center" Kind="MessageOutline" />
+                  </Border>
+                  <StackPanel Grid.Row="1" Margin="0,12,0,10" Spacing="5">
+                    <TextBlock FontSize="13.5" FontWeight="SemiBold" Text="새로운 대화" />
+                    <TextBlock FontSize="10.5" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
+                               Text="질문, 문서 작성, 코드 작업을 일반 챗봇처럼 바로 시작합니다." />
+                  </StackPanel>
+                  <materialIcons:MaterialIcon Grid.Row="2" Classes="ui-icon" Width="17" Height="17"
+                                              HorizontalAlignment="Right" Kind="ArrowRight" />
+                </Grid>
+              </Button>
+              <Button Grid.Column="1" Classes="launch-card" Command="{Binding CreateProjectCommand}">
+                <Grid RowDefinitions="Auto,*,Auto">
+                  <Border Width="36" Height="36" CornerRadius="9" HorizontalAlignment="Left"
+                          Background="{DynamicResource SiRaisedBrush}">
+                    <materialIcons:MaterialIcon Classes="ui-icon foreground" Width="18" Height="18"
+                                                HorizontalAlignment="Center" Kind="FolderPlusOutline" />
+                  </Border>
+                  <StackPanel Grid.Row="1" Margin="0,12,0,10" Spacing="5">
+                    <TextBlock FontSize="13.5" FontWeight="SemiBold" Text="새로운 프로젝트" />
+                    <TextBlock FontSize="10.5" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
+                               Text="막연한 아이디어를 Agent 설문으로 구체화해 작업 공간을 만듭니다." />
+                  </StackPanel>
+                  <materialIcons:MaterialIcon Grid.Row="2" Classes="ui-icon" Width="17" Height="17"
+                                              HorizontalAlignment="Right" Kind="ArrowRight" />
+                </Grid>
+              </Button>
+              <Button Grid.Column="2" Classes="launch-card" Command="{Binding OpenAutomationCommand}">
+                <Grid RowDefinitions="Auto,*,Auto">
+                  <Border Width="36" Height="36" CornerRadius="9" HorizontalAlignment="Left"
+                          Background="{DynamicResource SiRaisedBrush}">
+                    <materialIcons:MaterialIcon Classes="ui-icon foreground" Width="18" Height="18"
+                                                HorizontalAlignment="Center" Kind="CalendarClockOutline" />
+                  </Border>
+                  <StackPanel Grid.Row="1" Margin="0,12,0,10" Spacing="5">
+                    <TextBlock FontSize="13.5" FontWeight="SemiBold" Text="새로운 작업·스케줄" />
+                    <TextBlock FontSize="10.5" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
+                               Text="알람, 백그라운드 작업, 반복 실행을 설문으로 자동 등록합니다." />
+                  </StackPanel>
+                  <materialIcons:MaterialIcon Grid.Row="2" Classes="ui-icon" Width="17" Height="17"
+                                              HorizontalAlignment="Right" Kind="ArrowRight" />
+                </Grid>
+              </Button>
+            </Grid>
+
+            <Border Padding="14" CornerRadius="13" Background="{DynamicResource SiGlassBrush}"
+                    BorderBrush="{DynamicResource SiGlassBorderBrush}" BorderThickness="1">
+              <StackPanel Spacing="8">
+                <TextBox x:Name="QuickPromptBox" Classes="composer" AcceptsReturn="True" TextWrapping="Wrap"
+                         MinHeight="74" MaxHeight="180" Padding="3,4" FontSize="13.5"
+                         Background="Transparent" BorderThickness="0"
+                         Text="{Binding QuickPrompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         PlaceholderText="Agent에게 작업을 요청하세요" />
+                <Grid ColumnDefinitions="*,Auto" Margin="1,2,0,0">
+                  <TextBlock VerticalAlignment="Center" FontSize="10.5"
+                             Foreground="{DynamicResource SiMutedBrush}"
+                             Text="Enter 전송 · Shift+Enter 줄바꿈" />
+                  <Button Grid.Column="1" Classes="primary" Command="{Binding BeginConversationCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                      <TextBlock VerticalAlignment="Center" Text="전송" />
+                      <materialIcons:MaterialIcon Classes="ui-icon on-accent" Width="14" Height="14" Kind="SendOutline" />
+                    </StackPanel>
+                  </Button>
+                </Grid>
+              </StackPanel>
+            </Border>
+
+            <StackPanel x:Name="MyAppsSection" Spacing="10">
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Spacing="3">
+                  <TextBlock FontSize="14" FontWeight="SemiBold" Text="내 앱" />
+                  <TextBlock FontSize="10.5" Foreground="{DynamicResource SiMutedBrush}"
+                             Text="프로젝트에서 만든 웹앱과 할당된 로컬 주소를 모아봅니다." />
+                </StackPanel>
+                <Button Grid.Column="1" Classes="secondary" VerticalAlignment="Center"
+                        Command="{Binding CreateProjectCommand}" Content="앱 만들기" />
+              </Grid>
+
+              <Border IsVisible="{Binding IsAppsEmpty}" Padding="17" CornerRadius="10"
+                      Background="{DynamicResource SiPanelBrush}" BorderBrush="{DynamicResource SiDividerBrush}"
+                      BorderThickness="1">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                  <Border Width="38" Height="38" CornerRadius="9" Background="{DynamicResource SiRaisedBrush}">
+                    <materialIcons:MaterialIcon Classes="ui-icon foreground" Width="18" Height="18"
+                                                HorizontalAlignment="Center" Kind="ApplicationBracesOutline" />
+                  </Border>
+                  <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                    <TextBlock FontSize="12.5" FontWeight="SemiBold" Text="아직 만든 앱이 없습니다" />
+                    <TextBlock FontSize="10.5" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
+                               Text="앱 프로젝트를 만들면 실행 주소와 프로젝트가 여기에 자동으로 표시됩니다." />
+                  </StackPanel>
+                </Grid>
+              </Border>
+
+              <ItemsControl IsVisible="{Binding HasApps}" ItemsSource="{Binding Apps}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" ItemWidth="286" ItemHeight="112" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ProjectCardViewModel">
+                    <Button Classes="app-card" Margin="0,0,9,9" Command="{Binding OpenCommand}">
+                      <Grid RowDefinitions="Auto,*,Auto">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                          <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource SiRaisedBrush}">
+                            <materialIcons:MaterialIcon Classes="ui-icon foreground" Width="16" Height="16"
+                                                        HorizontalAlignment="Center" Kind="ApplicationBracesOutline" />
+                          </Border>
+                          <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="13"
+                                     FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Text="{Binding Name}" />
+                          <materialIcons:MaterialIcon Grid.Column="2" Classes="ui-icon" Width="15" Height="15"
+                                                      VerticalAlignment="Center" Kind="ArrowRight" />
+                        </Grid>
+                        <TextBlock Grid.Row="1" Margin="0,8,0,5" FontSize="10.5" TextTrimming="CharacterEllipsis"
+                                   Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Summary}" />
+                        <TextBlock Grid.Row="2" FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}"
+                                   Text="{Binding Delivery}" />
+                      </Grid>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+
+          </StackPanel>
+
+          <Grid Margin="0,8,0,0" ColumnDefinitions="*,Auto">
+            <StackPanel Spacing="3">
+              <TextBlock FontSize="14" FontWeight="SemiBold" Text="{Binding ProjectSectionTitle}" />
+              <TextBlock FontSize="10.5" Foreground="{DynamicResource SiMutedBrush}"
+                         Text="{Binding ProjectSectionDescription}" />
+            </StackPanel>
+            <TextBlock Grid.Column="1" VerticalAlignment="Bottom" FontSize="10.5"
+                       Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Status}" />
+          </Grid>
+
+          <Border IsVisible="{Binding IsEmpty}" Padding="24" CornerRadius="10"
+                  Background="{DynamicResource SiPanelBrush}" BorderBrush="{DynamicResource SiDividerBrush}"
+                  BorderThickness="1">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="14">
+              <Border Width="40" Height="40" CornerRadius="9" Background="{DynamicResource SiRaisedBrush}">
+                <materialIcons:MaterialIcon Classes="ui-icon foreground" Width="19" Height="19"
+                                            HorizontalAlignment="Center" Kind="FolderOutline" />
+              </Border>
+              <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                <TextBlock FontSize="13" FontWeight="SemiBold" Text="{Binding EmptyTitle}" />
+                <TextBlock FontSize="10.75" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
+                           Text="{Binding EmptyDescription}" />
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <ItemsControl IsVisible="{Binding HasProjects}" ItemsSource="{Binding Projects}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ProjectCardViewModel">
+                <Button Classes="project-card" Command="{Binding OpenCommand}">
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="13">
+                    <Border Width="42" Height="42" CornerRadius="9" Background="{DynamicResource SiRaisedBrush}">
+                      <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                                 FontSize="13" FontWeight="SemiBold" Text="{Binding Initial}" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="4">
+                      <TextBlock FontSize="13.5" FontWeight="SemiBold" Text="{Binding Name}" />
+                      <TextBlock FontSize="10" TextTrimming="CharacterEllipsis"
+                                 Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Directory}" />
+                      <TextBlock IsVisible="{Binding IsSummaryVisible}" FontSize="10.75" MaxHeight="34"
+                                 TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Summary}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Spacing="5" VerticalAlignment="Center" HorizontalAlignment="Right">
+                      <TextBlock IsVisible="{Binding HasDiscovery}" HorizontalAlignment="Right" FontSize="10.5"
+                                 Foreground="{DynamicResource SiForegroundBrush}" Text="{Binding Discovery}" />
+                      <TextBlock IsVisible="{Binding HasDelivery}" HorizontalAlignment="Right" FontSize="9.5"
+                                 Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Delivery}" />
+                      <TextBlock HorizontalAlignment="Right" FontSize="9.5"
+                                 Foreground="{DynamicResource SiMutedBrush}" Text="{Binding UpdatedAt}" />
+                    </StackPanel>
+                  </Grid>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+  </Grid>
+</UserControl>

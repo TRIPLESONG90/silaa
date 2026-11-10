@@ -1,0 +1,56 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="silaa.SilaaApplication">
+  <Application.Styles>
+    <FluentTheme />
+    <materialIcons:MaterialIconStyles />
+    <Style Selector="materialIcons|MaterialIcon.ui-icon">
+      <Setter Property="Width" Value="16" />
+      <Setter Property="Height" Value="16" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource SiMutedBrush}" />
+    </Style>
+    <Style Selector="materialIcons|MaterialIcon.ui-icon.foreground">
+      <Setter Property="Foreground" Value="{DynamicResource SiForegroundBrush}" />
+    </Style>
+    <Style Selector="materialIcons|MaterialIcon.ui-icon.on-accent">
+      <Setter Property="Foreground" Value="{DynamicResource SiOnAccentBrush}" />
+    </Style>
+    <Style Selector="materialIcons|MaterialIcon.ui-icon.delete-icon">
+      <Setter Property="Width" Value="15" />
+      <Setter Property="Height" Value="15" />
+    </Style>
+    <Style Selector="Button.icon-action">
+      <Setter Property="Width" Value="28" />
+      <Setter Property="Height" Value="28" />
+      <Setter Property="MinWidth" Value="28" />
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.icon-action.compact">
+      <Setter Property="Width" Value="20" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="MinWidth" Value="20" />
+      <Setter Property="MinHeight" Value="20" />
+      <Setter Property="CornerRadius" Value="5" />
+    </Style>
+    <Style Selector="Button.icon-action:pointerover">
+      <Setter Property="Background" Value="{DynamicResource SiRaisedBrush}" />
+    </Style>
+    <Style Selector="Button.icon-action.danger:pointerover">
+      <Setter Property="Background" Value="{DynamicResource SiDangerSoftBrush}" />
+    </Style>
+    <Style Selector="Button.icon-action.danger:pointerover materialIcons|MaterialIcon.ui-icon">
+      <Setter Property="Foreground" Value="{DynamicResource SiDangerBrush}" />
+    </Style>
+    <Style Selector="Button.icon-action:disabled">
+      <Setter Property="Opacity" Value="0.35" />
+    </Style>
+  </Application.Styles>
+</Application>

@@ -1,0 +1,104 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:silaa.UI"
+             xmlns:vm="using:silaa.ViewModels"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="silaa.UI.MemoryPage"
+             x:DataType="vm:MemoryViewModel"
+             Background="{DynamicResource SiBackgroundBrush}">
+  <UserControl.Styles>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="{DynamicResource SiAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SiOnAccentBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="16,9" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.secondary">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource SiMutedBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="Padding" Value="10,6" />
+    </Style>
+  </UserControl.Styles>
+  <Grid ColumnDefinitions="Auto,*">
+    <Border IsVisible="{Binding ShowNavigation}">
+      <ui:SettingsMenuView DataContext="{Binding Navigation}" />
+    </Border>
+    <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled">
+      <StackPanel MaxWidth="{DynamicResource SiContentMaxWidth}"
+                  Margin="{DynamicResource SiPageMargin}" Spacing="18" HorizontalAlignment="Stretch">
+        <StackPanel Spacing="6">
+          <TextBlock FontSize="9.5" FontWeight="SemiBold" LetterSpacing="1.2"
+                     Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Eyebrow}" />
+          <TextBlock FontSize="24" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding Title}" />
+          <TextBlock FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
+                     Text="비밀정보를 제외한 사실, 결정, 선호와 제약을 Agent가 다시 사용할 수 있도록 로컬에 보관합니다." />
+        </StackPanel>
+
+        <Border Padding="18" CornerRadius="10" Background="{DynamicResource SiPanelBrush}"
+                BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="1">
+          <StackPanel Spacing="14">
+            <StackPanel Spacing="6">
+              <TextBlock FontSize="12" FontWeight="SemiBold" Text="분류" />
+              <TextBlock FontSize="10.75" Foreground="{DynamicResource SiMutedBrush}"
+                         Text="기억이 어떤 종류의 정보인지 선택합니다." />
+              <ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding SelectedCategory, Mode=TwoWay}" />
+            </StackPanel>
+            <StackPanel Spacing="6">
+              <TextBlock FontSize="12" FontWeight="SemiBold" Text="내용" />
+              <TextBlock FontSize="10.75" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
+                         Text="비밀값과 인증정보는 Memory가 아니라 Vault에 저장하세요." />
+              <TextBox AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80"
+                       Text="{Binding Content, Mode=TwoWay}" PlaceholderText="비밀정보가 아닌 기억할 사실·결정·제약" />
+            </StackPanel>
+            <Button Classes="primary" HorizontalAlignment="Left" Command="{Binding SaveCommand}"
+                    Content="Memory에 저장" />
+            <TextBlock FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
+                       Text="{Binding Status}" />
+          </StackPanel>
+        </Border>
+
+        <TextBlock Margin="2,8,2,0" FontSize="15" FontWeight="SemiBold" Text="저장된 Memory" />
+        <Border IsVisible="{Binding IsEmpty}" Padding="24" CornerRadius="12"
+                Background="{DynamicResource SiPanelBrush}" BorderBrush="{DynamicResource SiDividerBrush}"
+                BorderThickness="1">
+          <StackPanel Spacing="7" HorizontalAlignment="Center">
+            <materialIcons:MaterialIcon Classes="ui-icon foreground" Width="21" Height="21"
+                                        HorizontalAlignment="Center" Kind="BookOpenOutline" />
+            <TextBlock HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold"
+                       Text="저장된 Memory가 없습니다" />
+            <TextBlock MaxWidth="500" TextAlignment="Center" TextWrapping="Wrap" FontSize="11.5"
+                       Foreground="{DynamicResource SiMutedBrush}"
+                       Text="결정, 선호와 제약을 남기면 다음 작업에서 Agent가 다시 활용할 수 있습니다." />
+          </StackPanel>
+        </Border>
+        <ItemsControl ItemsSource="{Binding Entries}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Spacing="7" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:MemoryEntryViewModel">
+              <Border Padding="14" CornerRadius="8" Background="{DynamicResource SiPanelBrush}"
+                      BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="1">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                  <StackPanel Spacing="4">
+                    <TextBlock FontSize="10.5" FontWeight="SemiBold"
+                               Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Scope}" />
+                    <TextBlock FontSize="12.5" TextWrapping="Wrap" Text="{Binding Content}" />
+                  </StackPanel>
+                  <Button Grid.Column="1" Classes="icon-action danger" Command="{Binding RemoveCommand}" ToolTip.Tip="기억 삭제">
+                    <materialIcons:MaterialIcon Classes="ui-icon delete-icon" Kind="DeleteOutline" />
+                  </Button>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

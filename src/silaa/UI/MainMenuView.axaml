@@ -1,0 +1,130 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:silaa.ViewModels"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="silaa.UI.MainMenuView"
+             x:DataType="vm:NavigationViewModel"
+             Width="{DynamicResource SiSidebarWidth}"
+             HorizontalAlignment="Left"
+             VerticalAlignment="Stretch">
+  <UserControl.Styles>
+    <Style Selector="Button.nav-item">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource SiMutedBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="11,9" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Button.nav-item.selected">
+      <Setter Property="Background" Value="{DynamicResource SiRaisedBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SiForegroundBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.nav-item.selected materialIcons|MaterialIcon.ui-icon">
+      <Setter Property="Foreground" Value="{DynamicResource SiForegroundBrush}" />
+    </Style>
+    <Style Selector="Button.new-task">
+      <Setter Property="Background" Value="{DynamicResource SiAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SiOnAccentBrush}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="12,10" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Background="{DynamicResource SiPanelBrush}"
+          BorderBrush="{DynamicResource SiDividerBrush}"
+          BorderThickness="0,0,1,0">
+    <Grid RowDefinitions="Auto,*,Auto">
+      <Grid Margin="16,18,14,14" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
+        <Border Width="28" Height="28" CornerRadius="8"
+                Background="{DynamicResource SiAccentBrush}">
+          <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
+                     FontSize="10.5" FontWeight="Bold"
+                     Foreground="{DynamicResource SiOnAccentBrush}" Text="Si" />
+        </Border>
+        <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+          <TextBlock FontSize="14" FontWeight="SemiBold" Text="silaa" />
+          <TextBlock FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}" Text="AGENT WORKSPACE" />
+        </StackPanel>
+        <materialIcons:MaterialIcon Grid.Column="2" Classes="ui-icon" Width="15" Height="15" Kind="ChevronDown" />
+      </Grid>
+
+      <Grid Grid.Row="1" RowDefinitions="Auto,*,Auto" Margin="10,0">
+        <StackPanel Spacing="2" HorizontalAlignment="Stretch">
+          <TextBlock Margin="9,2,0,7" FontSize="9.5" FontWeight="SemiBold"
+                     LetterSpacing="1.1" Foreground="{DynamicResource SiMutedBrush}"
+                     Text="WORKSPACE" />
+          <Button Classes="nav-item" Classes.selected="{Binding IsHome}" Command="{Binding OpenHomeCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <materialIcons:MaterialIcon Classes="ui-icon" Kind="ViewDashboardOutline" />
+              <TextBlock VerticalAlignment="Center" Text="홈" />
+            </StackPanel>
+          </Button>
+          <Button Classes="nav-item" Command="{Binding BeginConversationCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <materialIcons:MaterialIcon Classes="ui-icon" Kind="MessageOutline" />
+              <TextBlock VerticalAlignment="Center" Text="대화" />
+            </StackPanel>
+          </Button>
+          <Button Classes="nav-item" Classes.selected="{Binding IsProjects}" Command="{Binding OpenProjectsCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <materialIcons:MaterialIcon Classes="ui-icon" Kind="FolderOutline" />
+              <TextBlock VerticalAlignment="Center" Text="프로젝트" />
+            </StackPanel>
+          </Button>
+          <Button Classes="nav-item" Classes.selected="{Binding IsAutomation}" Command="{Binding OpenAutomationCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <materialIcons:MaterialIcon Classes="ui-icon" Kind="CalendarClockOutline" />
+              <TextBlock VerticalAlignment="Center" Text="예약 작업" />
+            </StackPanel>
+          </Button>
+          <Button Classes="nav-item" Classes.selected="{Binding IsSchedule}" Command="{Binding OpenScheduleCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <materialIcons:MaterialIcon Classes="ui-icon" Kind="CalendarMonthOutline" />
+              <TextBlock VerticalAlignment="Center" Text="내 일정" />
+            </StackPanel>
+          </Button>
+          <Button Classes="nav-item" Classes.selected="{Binding IsApps}" Command="{Binding OpenAppsCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <materialIcons:MaterialIcon Classes="ui-icon" Kind="ApplicationBracesOutline" />
+              <TextBlock VerticalAlignment="Center" Text="앱" />
+            </StackPanel>
+          </Button>
+          <Button Classes="nav-item" Classes.selected="{Binding IsPresentationTemplates}" Command="{Binding OpenPresentationTemplatesCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <materialIcons:MaterialIcon Classes="ui-icon" Kind="FileDocumentOutline" />
+              <TextBlock VerticalAlignment="Center" Text="문서 템플릿" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Spacing="2" HorizontalAlignment="Stretch">
+          <TextBlock Margin="9,2,0,7" FontSize="9.5" FontWeight="SemiBold"
+                     LetterSpacing="1.1" Foreground="{DynamicResource SiMutedBrush}"
+                     Text="SETTINGS" />
+          <Button Classes="nav-item" Classes.selected="{Binding IsSettings}" Command="{Binding OpenSettingsCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <materialIcons:MaterialIcon Classes="ui-icon" Kind="TuneVariant" />
+              <TextBlock VerticalAlignment="Center" Text="설정" />
+            </StackPanel>
+          </Button>
+          <Button Classes="nav-item" Command="{Binding OpenUsageGuideCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <materialIcons:MaterialIcon Classes="ui-icon" Kind="HelpCircleOutline" />
+              <TextBlock VerticalAlignment="Center" Text="사용법 물어보기" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </Grid>
+
+    </Grid>
+  </Border>
+</UserControl>

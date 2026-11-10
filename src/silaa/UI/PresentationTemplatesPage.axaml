@@ -1,0 +1,383 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:silaa.ViewModels"
+             xmlns:ui="using:silaa.UI"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="silaa.UI.PresentationTemplatesPage"
+             x:DataType="vm:PresentationTemplatesViewModel">
+  <UserControl.Styles>
+    <Style Selector="Button.survey-choice">
+      <Setter Property="Background" Value="{DynamicResource SiPanelBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SiForegroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="Padding" Value="12,8" />
+      <Setter Property="FontSize" Value="11" />
+    </Style>
+    <Style Selector="Button.survey-choice:pointerover">
+      <Setter Property="Background" Value="{DynamicResource SiRaisedBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SiMutedBrush}" />
+    </Style>
+    <Style Selector="Button.template-card">
+      <Setter Property="Width" Value="316" />
+      <Setter Property="Height" Value="268" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="0,0,16,16" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="{DynamicResource SiPanelBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource SiForegroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="14" />
+    </Style>
+    <Style Selector="Button.template-card:pointerover">
+      <Setter Property="Background" Value="{DynamicResource SiRaisedBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SiMutedBrush}" />
+    </Style>
+    <Style Selector="Border.template-drop-zone">
+      <Setter Property="Background" Value="{DynamicResource SiPanelBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="13" />
+    </Style>
+    <Style Selector="Border.template-drop-zone.drag-active">
+      <Setter Property="Background" Value="{DynamicResource SiAccentSoftBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SiAccentBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="Auto" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
+    <ui:MainMenuView DataContext="{Binding Navigation}" />
+
+    <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
+      <Border Background="{DynamicResource SiGlassBrush}"
+              BorderBrush="{DynamicResource SiGlassBorderBrush}" BorderThickness="0,0,0,1">
+        <Grid Margin="24,12" ColumnDefinitions="*,Auto" ColumnSpacing="16">
+          <StackPanel Spacing="2">
+            <TextBlock FontSize="15" FontWeight="SemiBold" Text="문서 템플릿" />
+            <TextBlock FontSize="10.5" Foreground="{DynamicResource SiMutedBrush}"
+                       Text="Docs, PPT, HTML에 사용할 색상·타이포·레이아웃을 관리합니다" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <Button Classes="secondary" IsVisible="{Binding IsCatalog}" Command="{Binding AddTemplateCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <materialIcons:MaterialIcon Classes="ui-icon" Width="15" Height="15" Kind="Plus" />
+                <TextBlock Text="새 템플릿" />
+              </StackPanel>
+            </Button>
+            <Button Classes="secondary" IsVisible="{Binding CanReturnToCatalog}" Command="{Binding ShowCatalogCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <materialIcons:MaterialIcon Classes="ui-icon" Width="15" Height="15" Kind="ArrowLeft" />
+                <TextBlock Text="목록으로" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <ScrollViewer Grid.Row="1" IsVisible="{Binding IsCatalog}"
+                    HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="32,28,16,32" MaxWidth="1040" HorizontalAlignment="Center" Spacing="18">
+          <StackPanel Spacing="5">
+            <TextBlock FontSize="22" FontWeight="SemiBold" Text="문서 디자인 템플릿" />
+            <TextBlock FontSize="11.5" Foreground="{DynamicResource SiMutedBrush}"
+                       Text="카드를 선택하면 형식별 기본 디자인으로 적용됩니다." />
+          </StackPanel>
+          <Border Classes="template-drop-zone" Classes.drag-active="{Binding IsDragOver}" Padding="16,13">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="13">
+              <Border Width="40" Height="40" CornerRadius="10"
+                      Background="{DynamicResource SiRaisedBrush}">
+                <materialIcons:MaterialIcon Classes="ui-icon" Width="19" Height="19"
+                                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            Kind="FileUploadOutline" />
+              </Border>
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                <TextBlock FontSize="12.5" FontWeight="SemiBold" Text="기존 문서에서 AI 템플릿 만들기" />
+                <TextBlock FontSize="10.5" Foreground="{DynamicResource SiMutedBrush}"
+                           Text="DOCX · PPTX · HTML 파일을 이곳에 놓으면 디자인을 분석하고 AI가 재설계합니다" />
+              </StackPanel>
+              <Button Grid.Column="2" Classes="secondary" VerticalAlignment="Center"
+                      Command="{Binding ImportTemplateCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <materialIcons:MaterialIcon Classes="ui-icon" Width="15" Height="15" Kind="FolderOpenOutline" />
+                  <TextBlock Text="파일 선택" />
+                </StackPanel>
+              </Button>
+            </Grid>
+          </Border>
+          <ItemsControl ItemsSource="{Binding Templates}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:PresentationDesignCard">
+                <Button Classes="template-card" Command="{Binding SelectCommand}">
+                  <Grid RowDefinitions="154,*">
+                    <Border Margin="11,11,11,0" CornerRadius="9" Background="{Binding PreviewBackground}" ClipToBounds="True">
+                      <Grid Margin="19,17" RowDefinitions="Auto,*,Auto">
+                        <TextBlock FontSize="8" FontWeight="SemiBold" Foreground="{Binding PreviewMuted}"
+                                   Text="{Binding Eyebrow}" />
+                        <StackPanel Grid.Row="1" VerticalAlignment="Center" Spacing="7">
+                          <Border Width="29" Height="2" HorizontalAlignment="Left" Background="{Binding PreviewAccent}" />
+                          <TextBlock FontSize="17" FontWeight="SemiBold" Foreground="{Binding PreviewForeground}"
+                                     TextWrapping="Wrap" Text="{Binding PreviewTitle}" />
+                        </StackPanel>
+                        <TextBlock Grid.Row="2" FontSize="8.5" Foreground="{Binding PreviewMuted}"
+                                   TextTrimming="CharacterEllipsis" Text="{Binding PreviewBody}" />
+                      </Grid>
+                    </Border>
+                    <Grid Grid.Row="1" Margin="16,13" RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,Auto">
+                      <StackPanel Orientation="Horizontal" Spacing="7">
+                        <TextBlock FontSize="13" FontWeight="SemiBold" Text="{Binding Title}" />
+                        <Border IsVisible="{Binding IsDefault}" Padding="6,2" CornerRadius="7"
+                                Background="{DynamicResource SiAccentBrush}">
+                          <TextBlock FontSize="8" FontWeight="SemiBold" Foreground="{DynamicResource SiOnAccentBrush}" Text="기본" />
+                        </Border>
+                      </StackPanel>
+                      <TextBlock Grid.Row="1" Margin="0,5,10,0" FontSize="10.5" LineHeight="15"
+                                 Foreground="{DynamicResource SiMutedBrush}" TextWrapping="Wrap"
+                                 Text="{Binding Description}" />
+                      <Border Grid.Column="1" Grid.RowSpan="3" Width="29" Height="29" CornerRadius="8"
+                              VerticalAlignment="Bottom" Background="{DynamicResource SiAccentBrush}">
+                        <materialIcons:MaterialIcon Classes="ui-icon on-accent" Width="15" Height="15"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                    Kind="ArrowRight" />
+                      </Border>
+                    </Grid>
+                  </Grid>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ScrollViewer>
+
+      <Grid Grid.Row="1" IsVisible="{Binding IsEditor}" Margin="24,20,24,22"
+            ColumnDefinitions="0.9*,1.1*" ColumnSpacing="16">
+        <Border CornerRadius="14" Background="{DynamicResource SiPanelBrush}"
+                BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="1">
+          <Grid RowDefinitions="Auto,*,Auto">
+            <StackPanel Margin="18,16,18,13" Spacing="4">
+              <TextBlock FontSize="9.5" FontWeight="SemiBold" LetterSpacing="1"
+                         Foreground="{DynamicResource SiMutedBrush}" Text="AI DESIGN EDITOR" />
+              <TextBlock FontSize="17" FontWeight="SemiBold" Text="대화로 디자인 수정" />
+              <TextBlock FontSize="10.5" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
+                         Text="색상, 글꼴, 여백과 분위기를 자연스럽게 요청하세요." />
+            </StackPanel>
+            <ScrollViewer x:Name="EditorConversationScroll" Grid.Row="1" Margin="14,0,14,8"
+                          HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+              <ItemsControl ItemsSource="{Binding EditorMessages}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><StackPanel Spacing="11" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:PresentationConversationMessage">
+                    <Grid>
+                      <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" IsVisible="{Binding IsAssistant}">
+                        <Border Width="25" Height="25" CornerRadius="7" Background="{DynamicResource SiAccentBrush}">
+                          <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="8.5"
+                                     FontWeight="Bold" Foreground="{DynamicResource SiOnAccentBrush}" Text="Si" />
+                        </Border>
+                        <Border Grid.Column="1" MaxWidth="470" HorizontalAlignment="Left" Padding="12,9"
+                                CornerRadius="3,10,10,10" Background="{DynamicResource SiRaisedBrush}">
+                          <TextBlock FontSize="11.5" LineHeight="18" TextWrapping="Wrap" Text="{Binding Text}" />
+                        </Border>
+                      </Grid>
+                      <Border IsVisible="{Binding IsUser}" MaxWidth="430" HorizontalAlignment="Right"
+                              Padding="12,9" CornerRadius="10,3,10,10" Background="{DynamicResource SiAccentBrush}">
+                        <TextBlock FontSize="11.5" LineHeight="18" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource SiOnAccentBrush}" Text="{Binding Text}" />
+                      </Border>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+            <Border Grid.Row="2" Margin="12" Padding="10" CornerRadius="11"
+                    Background="{DynamicResource SiGlassBrush}"
+                    BorderBrush="{DynamicResource SiGlassBorderBrush}" BorderThickness="1">
+              <StackPanel Spacing="8">
+                <TextBox x:Name="EditorInput" Classes="composer" AcceptsReturn="True" TextWrapping="Wrap"
+                         MinHeight="46" MaxHeight="120" Padding="3,4" Background="Transparent" BorderThickness="0"
+                         IsEnabled="{Binding CanEdit}"
+                         Text="{Binding EditorInputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         PlaceholderText="예: 배경을 더 따뜻하게 하고 제목 대비를 높여줘" />
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                  <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis" FontSize="9.5"
+                             Foreground="{DynamicResource SiMutedBrush}" Text="{Binding EditorStatus}" />
+                  <Button Grid.Column="1" Classes="primary" IsEnabled="{Binding CanEdit}"
+                          Command="{Binding SendEditorCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                      <TextBlock Text="수정" />
+                      <materialIcons:MaterialIcon Classes="ui-icon on-accent" Width="14" Height="14" Kind="SendOutline" />
+                    </StackPanel>
+                  </Button>
+                </Grid>
+              </StackPanel>
+            </Border>
+          </Grid>
+        </Border>
+
+        <Border Grid.Column="1" CornerRadius="14" Background="{DynamicResource SiPanelBrush}"
+                BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="1">
+          <Grid RowDefinitions="Auto,*,Auto">
+            <Grid Margin="18,15" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+              <StackPanel Spacing="3">
+                <TextBlock FontSize="9.5" FontWeight="SemiBold" Foreground="{DynamicResource SiMutedBrush}"
+                           Text="LIVE PREVIEW" />
+                <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding EditingTitle}" />
+              </StackPanel>
+              <Button Grid.Column="1" Classes="primary" IsEnabled="{Binding CanEdit}"
+                      Command="{Binding ApplyEditorCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <materialIcons:MaterialIcon Classes="ui-icon on-accent" Width="15" Height="15" Kind="Check" />
+                  <TextBlock Text="적용" />
+                </StackPanel>
+              </Button>
+            </Grid>
+
+            <Grid Grid.Row="1" Margin="18,0,18,14">
+              <Border MaxWidth="640" MaxHeight="470" MinHeight="350" HorizontalAlignment="Stretch"
+                      VerticalAlignment="Center" CornerRadius="10" Background="{Binding EditingBackground}"
+                      BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="1" ClipToBounds="True">
+                <Grid Margin="42,34" RowDefinitions="Auto,*,Auto">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock FontSize="9" FontWeight="SemiBold" Foreground="{Binding EditingMutedColor}"
+                               Text="{Binding EditingFormat}" />
+                    <TextBlock Grid.Column="1" FontSize="8.5" Foreground="{Binding EditingMutedColor}"
+                               Text="SILAA DOCUMENT SYSTEM" />
+                  </Grid>
+                  <StackPanel Grid.Row="1" VerticalAlignment="Center" Spacing="13">
+                    <Border Width="46" Height="3" HorizontalAlignment="Left" Background="{Binding EditingAccentColor}" />
+                    <TextBlock FontSize="27" FontWeight="SemiBold" TextWrapping="Wrap"
+                               FontFamily="{Binding EditingFont}" Foreground="{Binding EditingTitleColor}"
+                               Text="{Binding EditingTitle}" />
+                    <TextBlock MaxWidth="460" HorizontalAlignment="Left" FontSize="12" LineHeight="19"
+                               TextWrapping="Wrap" Foreground="{Binding EditingBodyColor}"
+                               Text="{Binding EditingDescription}" />
+                  </StackPanel>
+                  <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
+                    <StackPanel Orientation="Horizontal" Spacing="7">
+                      <Border Width="28" Height="4" Background="{Binding EditingAccentColor}" />
+                      <Border Width="28" Height="4" Background="{Binding EditingMutedColor}" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" FontSize="8.5" Foreground="{Binding EditingMutedColor}"
+                               Text="{Binding EditingLayout}" />
+                  </Grid>
+                </Grid>
+              </Border>
+            </Grid>
+
+            <Grid Grid.Row="2" Margin="18,0,18,16" ColumnDefinitions="Auto,Auto,Auto,*" ColumnSpacing="8">
+              <Border Padding="9,5" CornerRadius="9" Background="{DynamicResource SiRaisedBrush}">
+                <TextBlock FontSize="9.5" Text="{Binding EditingFormat}" />
+              </Border>
+              <Border Grid.Column="1" Padding="9,5" CornerRadius="9" Background="{DynamicResource SiRaisedBrush}">
+                <TextBlock FontSize="9.5" Text="{Binding EditingLayout}" />
+              </Border>
+              <Border Grid.Column="2" Padding="9,5" CornerRadius="9" Background="{DynamicResource SiRaisedBrush}">
+                <TextBlock FontSize="9.5" Text="{Binding EditingFont}" />
+              </Border>
+              <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="5" HorizontalAlignment="Right">
+                <Border Width="18" Height="18" CornerRadius="9" Background="{Binding EditingBackground}"
+                        BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="1" />
+                <Border Width="18" Height="18" CornerRadius="9" Background="{Binding EditingTitleColor}" />
+                <Border Width="18" Height="18" CornerRadius="9" Background="{Binding EditingAccentColor}" />
+              </StackPanel>
+            </Grid>
+          </Grid>
+        </Border>
+      </Grid>
+
+      <Grid Grid.Row="1" RowDefinitions="Auto,*" IsVisible="{Binding IsConversation}">
+        <StackPanel Margin="32,18,32,0" MaxWidth="820" HorizontalAlignment="Stretch" Spacing="7">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock FontSize="10.5" FontWeight="SemiBold" Text="{Binding ProgressText}" />
+            <TextBlock Grid.Column="1" FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}"
+                       Text="디자인 설문은 대화 목록에 저장되지 않습니다" />
+          </Grid>
+          <ProgressBar Height="3" Minimum="0" Maximum="1" Value="{Binding Progress}" />
+        </StackPanel>
+
+        <ScrollViewer x:Name="ConversationScroll" Grid.Row="1"
+                      HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <ItemsControl ItemsSource="{Binding Messages}" Margin="32,20,32,28"
+                        MaxWidth="820" HorizontalAlignment="Stretch">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Spacing="13" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:PresentationConversationMessage">
+                <Grid>
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9" IsVisible="{Binding IsAssistant}">
+                    <Border Width="27" Height="27" CornerRadius="8" Background="{DynamicResource SiAccentBrush}">
+                      <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="9"
+                                 FontWeight="Bold" Foreground="{DynamicResource SiOnAccentBrush}" Text="Si" />
+                    </Border>
+                    <Border Grid.Column="1" MaxWidth="650" HorizontalAlignment="Left" Padding="13,10"
+                            CornerRadius="3,11,11,11" Background="{DynamicResource SiPanelBrush}"
+                            BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="1">
+                      <TextBlock FontSize="12" LineHeight="19" TextWrapping="Wrap" Text="{Binding Text}" />
+                    </Border>
+                  </Grid>
+                  <Border IsVisible="{Binding IsUser}" MaxWidth="600" HorizontalAlignment="Right"
+                          Padding="13,10" CornerRadius="11,3,11,11"
+                          Background="{DynamicResource SiAccentBrush}">
+                    <TextBlock FontSize="12" LineHeight="19" TextWrapping="Wrap"
+                               Foreground="{DynamicResource SiOnAccentBrush}" Text="{Binding Text}" />
+                  </Border>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Grid>
+
+      <Border Grid.Row="2" IsVisible="{Binding IsConversation}" Margin="32,8,32,18" Padding="12,11" CornerRadius="13"
+              MaxWidth="820" HorizontalAlignment="Stretch"
+              Background="{DynamicResource SiGlassBrush}"
+              BorderBrush="{DynamicResource SiGlassBorderBrush}" BorderThickness="1">
+        <StackPanel Spacing="9">
+          <ItemsControl ItemsSource="{Binding Choices}" IsVisible="{Binding HasChoices}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:PresentationChoice">
+                <Button Classes="survey-choice" Margin="0,0,7,6"
+                        Command="{Binding SelectCommand}" Content="{Binding Label}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <TextBox x:Name="SurveyInput" Classes="composer" AcceptsReturn="True" TextWrapping="Wrap"
+                   MinHeight="44" MaxHeight="130" Padding="3,4" FontSize="12.5"
+                   Background="Transparent" BorderThickness="0" IsEnabled="{Binding CanCompose}"
+                   Text="{Binding InputText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                   PlaceholderText="{Binding InputPlaceholder}" />
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+              <Border Width="6" Height="6" CornerRadius="3" Background="{DynamicResource SiMutedBrush}" />
+              <TextBlock FontSize="10" TextTrimming="CharacterEllipsis" MaxWidth="560"
+                         Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Status}" />
+            </StackPanel>
+            <Button Grid.Column="1" Classes="primary" MinWidth="78" IsEnabled="{Binding CanCompose}"
+                    Command="{Binding SendCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <TextBlock Text="보내기" />
+                <materialIcons:MaterialIcon Classes="ui-icon on-accent" Width="14" Height="14" Kind="SendOutline" />
+              </StackPanel>
+            </Button>
+          </Grid>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

@@ -1,0 +1,137 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:silaa.UI"
+             xmlns:vm="using:silaa.ViewModels"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="silaa.UI.SkillsPage"
+             x:DataType="vm:SkillsViewModel"
+             Background="{DynamicResource SiBackgroundBrush}">
+  <Grid ColumnDefinitions="Auto,*">
+    <ui:MainMenuView DataContext="{Binding Navigation}" />
+    <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled"
+                  HorizontalContentAlignment="Stretch">
+      <StackPanel MaxWidth="{DynamicResource SiContentMaxWidth}" Margin="{DynamicResource SiPageMargin}" Spacing="18"
+                  HorizontalAlignment="Stretch">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+          <StackPanel Spacing="6">
+            <TextBlock FontSize="9.5" FontWeight="SemiBold" LetterSpacing="1.2"
+                       Foreground="{DynamicResource SiMutedBrush}" Text="CAPABILITIES" />
+            <TextBlock FontSize="24" FontWeight="SemiBold" Text="Skill" />
+            <TextBlock FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
+                       Text="복잡한 하네스 설정 없이, 필요한 작업 방식을 설치하고 대화로 바로 사용합니다." />
+          </StackPanel>
+          <Border Grid.Column="1" VerticalAlignment="Top" Padding="9,4" CornerRadius="12"
+                  Background="{DynamicResource SiRaisedBrush}">
+            <TextBlock FontSize="10.5" Text="{Binding CountLabel}" />
+          </Border>
+        </Grid>
+
+        <Border Padding="18" CornerRadius="12"
+                Background="{DynamicResource SiGlassBrush}"
+                BorderBrush="{DynamicResource SiGlassBorderBrush}" BorderThickness="1">
+          <StackPanel Spacing="13">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+              <StackPanel Spacing="4">
+                <TextBlock FontSize="14" FontWeight="SemiBold" Text="새 Skill 설치" />
+                <TextBlock FontSize="10.75" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
+                           Text="GitHub 주소를 붙여넣거나 내 컴퓨터의 Skill 폴더를 선택하세요. 설치 중 스크립트는 실행되지 않습니다." />
+              </StackPanel>
+              <Border Grid.Column="1" Padding="8,3" CornerRadius="10"
+                      Background="{DynamicResource SiRaisedBrush}" VerticalAlignment="Top">
+                <TextBlock FontSize="9.5" Text="검사 후 설치" />
+              </Border>
+            </Grid>
+
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+              <TextBox Text="{Binding InstallSource, Mode=TwoWay}"
+                       PlaceholderText="https://github.com/사용자/저장소/tree/main/skills/example 또는 폴더 경로" />
+              <Button Grid.Column="1" Command="{Binding BrowseSourceCommand}" Content="폴더 선택" />
+            </Grid>
+
+            <Grid ColumnDefinitions="*,190" ColumnSpacing="10">
+              <StackPanel Spacing="5">
+                <TextBlock FontSize="10.5" Foreground="{DynamicResource SiMutedBrush}"
+                           Text="저장소 안의 Skill 폴더 · 주소에 폴더가 포함되면 비워도 됩니다" />
+                <TextBox Text="{Binding InstallSubpath, Mode=TwoWay}"
+                         PlaceholderText="예: week1/inventory/skills/inventory" />
+              </StackPanel>
+              <StackPanel Grid.Column="1" Spacing="5">
+                <TextBlock FontSize="10.5" Foreground="{DynamicResource SiMutedBrush}" Text="사용 범위" />
+                <ComboBox ItemsSource="{Binding Scopes}" SelectedItem="{Binding SelectedScope, Mode=TwoWay}" />
+              </StackPanel>
+            </Grid>
+
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+              <StackPanel Spacing="6" VerticalAlignment="Center">
+                <CheckBox IsChecked="{Binding Overwrite, Mode=TwoWay}"
+                          Content="같은 이름이 있으면 업데이트" />
+                <TextBlock FontSize="10.5" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
+                           Text="{Binding Status}" />
+              </StackPanel>
+              <Button Grid.Column="1" MinWidth="112" Padding="16,10"
+                      Command="{Binding InstallCommand}" Content="설치하기" />
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <Border Padding="14" CornerRadius="10"
+                Background="{DynamicResource SiPanelBrush}"
+                BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="1">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+            <StackPanel Spacing="3">
+              <TextBlock FontSize="12" FontWeight="SemiBold" Text="설치가 끝났나요?" />
+              <TextBlock FontSize="10.75" Foreground="{DynamicResource SiMutedBrush}"
+                         Text="새 대화에서 ‘이 실습 시작해줘’라고 말하면 silaa가 준비 상태부터 확인합니다." />
+            </StackPanel>
+            <Button Grid.Column="1" VerticalAlignment="Center"
+                    Command="{Binding Navigation.BeginConversationCommand}" Content="새 대화" />
+          </Grid>
+        </Border>
+
+        <StackPanel Spacing="6">
+          <TextBlock FontSize="12" FontWeight="SemiBold" Text="설치된 Skill" />
+          <TextBox Text="{Binding SearchText, Mode=TwoWay}" PlaceholderText="이름이나 작업 설명으로 검색" />
+        </StackPanel>
+
+        <Border IsVisible="{Binding IsEmpty}" Padding="26" CornerRadius="12"
+                Background="{DynamicResource SiPanelBrush}" BorderBrush="{DynamicResource SiDividerBrush}"
+                BorderThickness="1">
+          <StackPanel Spacing="7" HorizontalAlignment="Center">
+            <materialIcons:MaterialIcon Classes="ui-icon foreground" Width="21" Height="21"
+                                        HorizontalAlignment="Center" Kind="PlusCircleOutline" />
+            <TextBlock HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold"
+                       Text="{Binding EmptyTitle}" />
+            <TextBlock MaxWidth="520" TextAlignment="Center" TextWrapping="Wrap" FontSize="11.5"
+                       Foreground="{DynamicResource SiMutedBrush}" Text="{Binding EmptyDescription}" />
+          </StackPanel>
+        </Border>
+
+        <ItemsControl ItemsSource="{Binding Skills}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:SkillCardViewModel">
+              <Border Padding="16" CornerRadius="10" Background="{DynamicResource SiPanelBrush}"
+                      BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="1">
+                <StackPanel Spacing="7">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                    <TextBlock FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding Name}" />
+                    <Border Grid.Column="1" Padding="8,3" CornerRadius="10"
+                            Background="{DynamicResource SiRaisedBrush}">
+                      <TextBlock FontSize="9.5" Text="{Binding Source}" />
+                    </Border>
+                  </Grid>
+                  <TextBlock FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
+                             Text="{Binding Description}" />
+                  <TextBlock FontSize="10.5" FontFamily="Cascadia Mono, Consolas, monospace"
+                             Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Folder}" />
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>
