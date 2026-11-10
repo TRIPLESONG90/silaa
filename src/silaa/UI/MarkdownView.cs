@@ -16,16 +16,21 @@ namespace silaa.UI;
 internal sealed class MarkdownView
 {
     private const int MaximumLiveBlockCharacters = 3_000;
+    private static readonly Regex InlineMarkdown = new(
+        @"\*\*(.+?)\*\*|~~(.+?)~~|(?<!\*)\*([^*\n]+?)\*(?!\*)|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)|(https?://[^\s<>\[\]]+)",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private readonly StringBuilder _source = new();
     private readonly StackPanel _stableBlocks = new() { Spacing = 8, IsVisible = false };
     private readonly StackPanel _liveBlocks = new() { Spacing = 8, IsVisible = false };
+    private readonly Action<Uri>? _openLink;
     private IBrush _foreground = Palette.White;
     private bool _completed;
     private int _stableSourceLength;
     private int _renderedSourceLength;
 
-    public MarkdownView(string? text = null)
+    public MarkdownView(string? text = null, Action<Uri>? openLink = null)
     {
+        _openLink = openLink;
         Root = new StackPanel { Spacing = 8 };
         ShowStreamingContainers();
         if (!string.IsNullOrEmpty(text))
@@ -586,11 +591,11 @@ internal sealed class MarkdownView
         return grid;
     }
 
-    private static void AddInlineText(SelectableTextBlock document, string text, double fontSize,
+    private void AddInlineText(SelectableTextBlock document, string text, double fontSize,
         FontWeight weight, IBrush foreground)
     {
         var position = 0;
-        foreach (Match match in Regex.Matches(text, @"\*\*(.+?)\*\*|~~(.+?)~~|(?<!\*)\*([^*\n]+?)\*(?!\*)|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\)"))
+        foreach (Match match in InlineMarkdown.Matches(text))
         {
             if (match.Index > position)
                 AddRun(document, text[position..match.Index], fontSize, weight, foreground);
@@ -620,17 +625,73 @@ internal sealed class MarkdownView
                     Foreground = Palette.InlineCodeText,
                     Background = Palette.InlineCode
                 });
+            else if (match.Groups[5].Success)
+                AddLink(document, match.Groups[5].Value, match.Groups[6].Value, fontSize, weight, foreground);
             else
-                document.Inlines!.Add(new Run(match.Groups[5].Value)
-                {
-                    FontSize = fontSize,
-                    FontWeight = weight,
-                    Foreground = Palette.Link,
-                    TextDecorations = TextDecorations.Underline
-                });
+            {
+                var (url, suffix) = SplitUrlSuffix(match.Groups[7].Value);
+                AddLink(document, url, url, fontSize, weight, foreground);
+                if (suffix.Length > 0) AddRun(document, suffix, fontSize, weight, foreground);
+            }
             position = match.Index + match.Length;
         }
         if (position < text.Length) AddRun(document, text[position..], fontSize, weight, foreground);
+    }
+
+    private void AddLink(SelectableTextBlock document, string label, string target, double fontSize,
+        FontWeight weight, IBrush fallbackForeground)
+    {
+        if (_openLink is null || !TryCreateWebUri(target, out var uri))
+        {
+            AddRun(document, label, fontSize, weight, fallbackForeground);
+            return;
+        }
+
+        var linkText = new TextBlock
+        {
+            Text = label,
+            FontSize = fontSize,
+            FontWeight = weight,
+            Foreground = Palette.Link,
+            TextDecorations = TextDecorations.Underline,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        var link = new HyperlinkButton
+        {
+            Content = linkText,
+            Padding = new Thickness(0),
+            Margin = new Thickness(0),
+            MinWidth = 0,
+            MinHeight = 0,
+            Background = Brushes.Transparent,
+            BorderThickness = new Thickness(0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Tag = uri
+        };
+        ToolTip.SetTip(link, $"내장 브라우저로 열기\n{uri.AbsoluteUri}");
+        link.Click += (_, _) => _openLink(uri);
+        document.Inlines!.Add(new InlineUIContainer(link));
+    }
+
+    internal static bool TryCreateWebUri(string target, out Uri uri)
+    {
+        target = target.Trim();
+        if (target.StartsWith('<') && target.EndsWith('>')) target = target[1..^1].Trim();
+        if (Uri.TryCreate(target, UriKind.Absolute, out var parsed) &&
+            parsed.Scheme is "http" or "https")
+        {
+            uri = parsed;
+            return true;
+        }
+        uri = null!;
+        return false;
+    }
+
+    private static (string Url, string Suffix) SplitUrlSuffix(string value)
+    {
+        var length = value.Length;
+        while (length > 0 && value[length - 1] is '.' or ',' or '!' or '?' or ':' or ';') length--;
+        return (value[..length], value[length..]);
     }
 
     private static void AddRun(SelectableTextBlock document, string text, double fontSize,

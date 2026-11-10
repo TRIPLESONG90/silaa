@@ -832,6 +832,23 @@ Assert(completedSelectable is not null,
     "completed Markdown preserves selectable structured blocks");
 Assert(ReferenceEquals(completedSelectable!.SelectionForegroundBrush, silaa.UI.Palette.OnAccent),
     "Markdown selection keeps readable foreground contrast in light and dark themes");
+Uri? openedChatLink = null;
+var linkedMarkdown = new silaa.UI.MarkdownView(
+    "[Release](https://github.com/TRIPLESONG90/silaa), https://avaloniaui.net/ai and [unsafe](file:///C:/secret.txt)",
+    uri => openedChatLink = uri);
+var renderedLinks = linkedMarkdown.Root.GetLogicalDescendants()
+    .OfType<Avalonia.Controls.HyperlinkButton>().ToList();
+Assert(renderedLinks.Count == 2 &&
+       renderedLinks.All(link => link.NavigateUri is null) &&
+       renderedLinks.All(link => link.Tag is Uri tagged && tagged.Scheme == "https"),
+    "Markdown and bare web links are routed through the silaa browser instead of the system launcher");
+renderedLinks[0].RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Avalonia.Controls.Button.ClickEvent));
+Assert(openedChatLink?.Host == "github.com" &&
+       silaa.UI.MarkdownView.TryCreateWebUri("https://example.com/path", out var safeWebUri) &&
+       safeWebUri.Host == "example.com" &&
+       !silaa.UI.MarkdownView.TryCreateWebUri("file:///C:/secret.txt", out _) &&
+       !silaa.UI.MarkdownView.TryCreateWebUri("javascript:alert(1)", out _),
+    "chat links allow only absolute HTTP and HTTPS addresses");
 Assert(silaa.UI.MainWindow.ShouldFollowMessageTail(970, 1600, 600) &&
        !silaa.UI.MainWindow.ShouldFollowMessageTail(300, 1600, 600),
     "streaming follows the tail only while the reader remains near the bottom");

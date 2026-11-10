@@ -589,6 +589,16 @@ public sealed partial class MainWindow : Window
             initialUri,
             () => ShowPage(returnPage),
             (title, message) => _toastHost.Show(title, message, SiStatusTone.Danger, 5200));
+
+    private void OpenChatLink(Uri uri)
+    {
+        if (uri.Scheme is not ("http" or "https"))
+        {
+            _toastHost.Show("링크를 열 수 없습니다", "HTTP 또는 HTTPS 주소만 열 수 있습니다.", SiStatusTone.Danger, 4200);
+            return;
+        }
+        ShowPage(BrowserPage(uri, _chatShell));
+    }
     private async Task RefreshHomeAsync()
     {
         if (!_store.IsConfigured) return;
@@ -2382,7 +2392,7 @@ public sealed partial class MainWindow : Window
     private AgentRunView AddAssistantRun()
     {
         RemoveEmptyState();
-        var view = new AgentRunView();
+        var view = new AgentRunView(OpenChatLink);
         _messages.Children.Add(view.Root);
         return view;
     }
@@ -2393,7 +2403,7 @@ public sealed partial class MainWindow : Window
         if (role != "user") text = LlmHarness.NormalizeTextParts(text);
         Control body = role == "user"
             ? new SelectableTextBlock { Text = text, TextWrapping = TextWrapping.Wrap, FontSize = 13, LineHeight = 20 }
-            : new MarkdownView(text).Root;
+            : new MarkdownView(text, OpenChatLink).Root;
         var stack = new StackPanel { Spacing = 6 };
         if (role == "user")
         {

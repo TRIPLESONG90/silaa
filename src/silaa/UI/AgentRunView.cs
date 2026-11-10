@@ -19,12 +19,14 @@ internal sealed class AgentRunView
     private readonly List<MarkdownView> _answerViews = [];
     private readonly StringBuilder _answerText = new();
     private readonly WaitingIndicator _waiting = new();
+    private readonly Action<Uri>? _openLink;
     private ReasoningDisclosure? _activeReasoning;
     private MarkdownView? _activeAnswer;
     private bool _answerCopyAdded;
 
-    public AgentRunView()
+    public AgentRunView(Action<Uri>? openLink = null)
     {
+        _openLink = openLink;
         var identity = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -147,7 +149,7 @@ internal sealed class AgentRunView
         _timelineKinds.RemoveAll(kind => kind == "answer");
         _answerText.Clear();
         _answerText.Append(text);
-        var replacement = new MarkdownView();
+        var replacement = new MarkdownView(openLink: _openLink);
         replacement.SetText(text);
         replacement.Complete();
         _answerViews.Add(replacement);
@@ -221,7 +223,7 @@ internal sealed class AgentRunView
                 Margin = new Thickness(0, 3, 0, 4)
             });
         }
-        _activeAnswer = new MarkdownView();
+        _activeAnswer = new MarkdownView(openLink: _openLink);
         _answerViews.Add(_activeAnswer);
         _content.Children.Add(_activeAnswer.Root);
         _timelineKinds.Add("answer");
