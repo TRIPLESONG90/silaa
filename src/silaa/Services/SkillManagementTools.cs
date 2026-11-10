@@ -35,14 +35,15 @@ internal sealed class SkillManagementTools(
             "Validate the structure, frontmatter, naming, and unfinished placeholders of one project-local skill."),
         AIFunctionFactory.Create((Func<string, string, string, bool, CancellationToken, Task<string>>)InstallSkillAsync,
             "install_skill",
-            "Install and verify a Skill package from an allowed local folder, GitHub URL, direct ZIP/SKILL.md URL, " +
-            "or an HTTP(S) documentation page that links to one. " +
+            "Register and verify Agent guidance from an allowed local folder, GitHub URL, direct ZIP/SKILL.md URL, " +
+            "or an HTTP(S) Skill guide page. A guide page without a package link is converted into a validated SKILL.md. " +
             "Use project scope by default. Use global or overwrite only when the user explicitly requests it. " +
-            "Installation copies files but never executes packaged scripts. Never claim success unless verified is true.")
+            "This only registers guidance: it never installs dependencies, executes scripts, logs in, or configures an SDK. " +
+            "Never describe those actions as completed. Never claim registration success unless verified is true.")
     ];
 
     public async Task<string> InstallSkillAsync(
-        [Description("Allowed local folder, local SKILL.md path, GitHub URL, direct Skill ZIP/SKILL.md URL, or documentation page URL.")] string source,
+        [Description("Allowed local folder, local SKILL.md path, GitHub URL, direct Skill ZIP/SKILL.md URL, or a Skill guide web page URL.")] string source,
         [Description("Optional folder containing SKILL.md relative to the source repository or folder.")] string subpath = "",
         [Description("Install scope: project or global. Prefer project.")] string scope = "project",
         [Description("Replace an installed Skill with the same name. Use only after an explicit update or overwrite request.")] bool overwrite = false,
@@ -72,8 +73,9 @@ internal sealed class SkillManagementTools(
         var result = await _installer.InstallAsync(source, subpath, scope, overwrite, cancellationToken);
         return JsonSerializer.Serialize(new
         {
-            installed = true,
+            registered = true,
             verified = result.Verified,
+            kind = "agent_guidance",
             result.Name,
             result.Description,
             scope = result.Scope,
@@ -81,6 +83,7 @@ internal sealed class SkillManagementTools(
             files = result.FileCount,
             bytes = result.TotalBytes,
             source = result.Source,
+            dependenciesInstalled = false,
             scriptsExecuted = false,
             available = "next Agent run"
         }, new JsonSerializerOptions { WriteIndented = true });

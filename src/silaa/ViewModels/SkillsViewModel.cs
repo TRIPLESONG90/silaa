@@ -36,7 +36,7 @@ public partial class SkillsViewModel : ObservableObject
     public IReadOnlyList<string> Scopes { get; } = ["프로젝트", "전체"];
 
     [ObservableProperty] private string _searchText = "";
-    [ObservableProperty] private string _countLabel = "0개 설치됨";
+    [ObservableProperty] private string _countLabel = "0개 등록됨";
     [ObservableProperty] private bool _isEmpty;
     [ObservableProperty] private string _emptyTitle = "";
     [ObservableProperty] private string _emptyDescription = "";
@@ -45,7 +45,7 @@ public partial class SkillsViewModel : ObservableObject
     [ObservableProperty] private string _selectedScope = "프로젝트";
     [ObservableProperty] private bool _overwrite;
     [ObservableProperty] private bool _isInstalling;
-    [ObservableProperty] private string _status = "GitHub 주소를 붙여넣거나 내 컴퓨터의 Skill 폴더를 선택하세요.";
+    [ObservableProperty] private string _status = "웹 가이드 주소를 붙여넣거나 Skill 파일·폴더를 선택하세요.";
 
     partial void OnSearchTextChanged(string value) => ApplyFilter();
 
@@ -62,7 +62,7 @@ public partial class SkillsViewModel : ObservableObject
         var source = InstallSource.Trim();
         if (source.Length == 0)
         {
-            Status = "설치할 GitHub 주소나 폴더를 입력하세요.";
+            Status = "등록할 웹 가이드, GitHub 주소, SKILL.md 또는 폴더를 입력하세요.";
             return;
         }
 
@@ -72,30 +72,30 @@ public partial class SkillsViewModel : ObservableObject
             : "현재 작업 폴더에서만 사용하는 프로젝트 Skill";
         var overwriteText = Overwrite
             ? " 같은 이름의 Skill이 있으면 기존 파일을 교체합니다."
-            : " 같은 이름의 Skill이 있으면 설치를 중단합니다.";
+            : " 같은 이름의 Skill이 있으면 등록을 중단합니다.";
         if (!await _confirmInstall(
-                "Skill 설치",
-                $"{destination}로 설치합니다.{overwriteText}\n\n패키지 안의 스크립트는 설치 중 실행하지 않습니다.")) return;
+                "Skill 지침 등록",
+                $"{destination}로 지침을 등록합니다.{overwriteText}\n\n프로그램·SDK·의존성을 설치하거나 스크립트를 실행하지 않습니다.")) return;
 
         IsInstalling = true;
-        Status = "Skill을 검사하고 안전하게 설치하는 중…";
+        Status = "Skill 지침을 읽고 검증해 등록하는 중…";
         try
         {
             var result = await _installer.InstallAsync(
                 source, InstallSubpath, scope, Overwrite, CancellationToken.None);
-            Status = $"{result.Name} 설치 완료 · {result.FileCount}개 파일 · 다음 대화부터 사용 가능";
+            Status = $"{result.Name} 지침 등록 완료 · {result.FileCount}개 파일 · 다음 대화부터 사용 가능";
             InstallSource = "";
             InstallSubpath = "";
             Overwrite = false;
             Refresh();
-            _notify("Skill 설치 완료", $"{result.Name}을(를) 설치했습니다. 새 대화부터 자동으로 사용할 수 있습니다.", false);
+            _notify("Skill 지침 등록 완료", $"{result.Name} 지침을 등록했습니다. 새 대화부터 자동으로 참고합니다.", false);
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or
                                            UnauthorizedAccessException or DirectoryNotFoundException or
                                            FileNotFoundException or IOException or TimeoutException)
         {
             Status = exception.Message;
-            _notify("Skill 설치 실패", exception.Message, true);
+            _notify("Skill 지침 등록 실패", exception.Message, true);
         }
         finally
         {
@@ -144,11 +144,11 @@ public partial class SkillsViewModel : ObservableObject
             skill.Folder.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
         Skills.Clear();
         foreach (var skill in matches) Skills.Add(skill);
-        CountLabel = $"{matches.Count}개 설치됨";
+        CountLabel = $"{matches.Count}개 등록됨";
         IsEmpty = matches.Count == 0;
-        EmptyTitle = _installed.Count == 0 ? "설치된 Skill이 없습니다" : "검색 결과가 없습니다";
+        EmptyTitle = _installed.Count == 0 ? "등록된 Skill 지침이 없습니다" : "검색 결과가 없습니다";
         EmptyDescription = _installed.Count == 0
-            ? "위 입력란에 GitHub 주소를 붙여넣거나 Skill 폴더를 선택해 시작하세요."
+            ? "위 입력란에 웹 가이드나 GitHub 주소를 붙여넣거나 Skill 파일·폴더를 선택하세요."
             : "다른 이름이나 작업 설명으로 다시 검색해 보세요.";
     }
 

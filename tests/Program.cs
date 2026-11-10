@@ -1656,13 +1656,24 @@ if (OperatingSystem.IsWindows())
                    webInstalledSkill.Source.EndsWith("dlstudio-skill.zip", StringComparison.Ordinal) &&
                    File.Exists(Path.Combine(workspace, ".silaa", "skills", "web-lab-helper", "SKILL.md")),
                 "skill installer follows a documentation-page package link and verifies the installed files");
+            var pageInstalledSkill = await installer.InstallAsync(
+                webSkillServer.StandaloneDocumentationUrl, "", "project", false);
+            var generatedSkill = File.ReadAllText(Path.Combine(
+                workspace, ".silaa", "skills", "dlstudio-agent-skill", "SKILL.md"));
+            Assert(pageInstalledSkill.Name == "dlstudio-agent-skill" && pageInstalledSkill.Verified &&
+                   generatedSkill.Contains("Connect to DLStudio", StringComparison.Ordinal) &&
+                   generatedSkill.Contains("```", StringComparison.Ordinal) &&
+                   generatedSkill.Contains(webSkillServer.StandaloneDocumentationUrl, StringComparison.Ordinal),
+                "a standalone Skill guide web page becomes a validated local SKILL.md without requiring a ZIP");
         }
         var correctedInstallClaim = LlmHarness.EnsureVerifiedSkillInstallClaim(
             "DLStudio 스킬 설치해줘", "DLStudio 에이전트 스킬 설치를 완료했습니다.", verified: false);
-        Assert(correctedInstallClaim.Contains("설치 상태 정정", StringComparison.Ordinal) &&
-               LlmHarness.EnsureVerifiedSkillInstallClaim(
-                   "DLStudio 스킬 설치해줘", "설치 완료", verified: true) == "설치 완료",
-            "unverified LLM installation claims are corrected while verified tool results remain unchanged");
+        var clarifiedGuidanceClaim = LlmHarness.EnsureVerifiedSkillInstallClaim(
+            "DLStudio 스킬 설치해줘", "설치 완료", verified: true);
+        Assert(correctedInstallClaim.Contains("지침 등록 상태 정정", StringComparison.Ordinal) &&
+               clarifiedGuidanceClaim.Contains("Skill 지침 등록 완료", StringComparison.Ordinal) &&
+               clarifiedGuidanceClaim.Contains("의존성 설치", StringComparison.Ordinal),
+            "Skill claims distinguish verified guidance registration from software or dependency installation");
         await AssertThrowsAsync<InvalidOperationException>(
             () => installer.InstallAsync(importSource, "", "project", false),
             "skill installer refuses implicit replacement");
@@ -2126,10 +2137,12 @@ sealed class MockSkillServer : IAsyncDisposable
         _listener.Start();
         var port = ((IPEndPoint)_listener.LocalEndpoint).Port;
         DocumentationUrl = $"http://127.0.0.1:{port}/docs/agent-skill/";
+        StandaloneDocumentationUrl = $"http://127.0.0.1:{port}/docs/standalone-skill/";
         _loop = AcceptAsync();
     }
 
     public string DocumentationUrl { get; }
+    public string StandaloneDocumentationUrl { get; }
 
     private async Task AcceptAsync()
     {
@@ -2156,9 +2169,12 @@ sealed class MockSkillServer : IAsyncDisposable
             while (!string.IsNullOrEmpty(header = await reader.ReadLineAsync())) { }
             var path = requestLine?.Split(' ', StringSplitOptions.RemoveEmptyEntries).ElementAtOrDefault(1) ?? "/";
             var isZip = path.EndsWith("dlstudio-skill.zip", StringComparison.Ordinal);
+            var isStandalone = path.Contains("standalone-skill", StringComparison.Ordinal);
             var payload = isZip
                 ? _skillZip
-                : Encoding.UTF8.GetBytes("<html><body><a href='/downloads/dlstudio-skill.zip'>Download Agent Skill</a></body></html>");
+                : isStandalone
+                    ? Encoding.UTF8.GetBytes("<html><head><title>DLStudio Agent Skill</title><meta name='description' content='Connect and operate DLStudio safely.'></head><body><h1>Connect to DLStudio</h1><p>Use device authorization.</p><pre><code>dlstudio login</code></pre></body></html>")
+                    : Encoding.UTF8.GetBytes("<html><body><a href='/downloads/dlstudio-skill.zip'>Download Agent Skill</a></body></html>");
             var contentType = isZip ? "application/zip" : "text/html; charset=utf-8";
             var response = Encoding.ASCII.GetBytes(
                 $"HTTP/1.1 200 OK\r\nContent-Type: {contentType}\r\nContent-Length: {payload.Length}\r\nConnection: close\r\n\r\n");

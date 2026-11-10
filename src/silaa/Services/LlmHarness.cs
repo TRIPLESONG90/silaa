@@ -721,7 +721,7 @@ public sealed class LlmHarness : IAsyncDisposable
                 : BuildHistory(_sessions.Messages(sessionId), settings);
             var answer = new StringBuilder();
             var toolNames = new Dictionary<string, string>(StringComparer.Ordinal);
-            var verifiedSkillInstall = false;
+            var verifiedSkillGuidance = false;
 
             onEvent?.Invoke(new ChatRunEvent("status", "Microsoft Agent Framework 실행 중…", sessionId));
             try
@@ -750,8 +750,8 @@ public sealed class LlmHarness : IAsyncDisposable
                                            toolNames.TryGetValue(functionResult.CallId, out var toolName)
                                     ? toolName : "도구";
                                 if (name.Equals("install_skill", StringComparison.Ordinal) &&
-                                    functionResult.Exception is null && IsVerifiedSkillInstall(functionResult.Result))
-                                    verifiedSkillInstall = true;
+                                    functionResult.Exception is null && IsVerifiedSkillGuidance(functionResult.Result))
+                                    verifiedSkillGuidance = true;
                                 if (!IsOnboardingTool(name))
                                     onEvent?.Invoke(new ChatRunEvent("tool_result", FormatToolResult(name, functionResult), sessionId, functionResult.CallId));
                                 break;
@@ -787,7 +787,7 @@ public sealed class LlmHarness : IAsyncDisposable
             }
 
             var streamedResult = NormalizeTextParts(answer.ToString()).Trim();
-            var result = EnsureVerifiedSkillInstallClaim(prompt, streamedResult, verifiedSkillInstall);
+            var result = EnsureVerifiedSkillInstallClaim(prompt, streamedResult, verifiedSkillGuidance);
             if (result.Length > streamedResult.Length)
                 onEvent?.Invoke(new ChatRunEvent("text", result[streamedResult.Length..], sessionId));
             if (result.Length == 0) throw new LlmUnavailableException("LLM이 빈 응답을 반환했습니다.");
@@ -982,19 +982,23 @@ public sealed class LlmHarness : IAsyncDisposable
 
     internal static string EnsureVerifiedSkillInstallClaim(string prompt, string answer, bool verified)
     {
-        if (verified || string.IsNullOrWhiteSpace(answer) ||
+        if (string.IsNullOrWhiteSpace(answer) ||
             !Regex.IsMatch(prompt,
                 "(?i)(skill|스킬).{0,40}(install|설치|추가)|(?:install|설치).{0,40}(?:skill|스킬)"))
             return answer;
         var claimsSuccess = Regex.IsMatch(answer,
             "(?i)(설치(?:를|가|는)?\\s*(?:완료|성공|했습니다|하였습니다|됐|되었)|installed\\s+successfully|installation\\s+(?:is\\s+)?complete)");
         if (!claimsSuccess) return answer;
-        return answer +
-               "\n\n> ⚠️ 설치 상태 정정: 이번 실행에는 `install_skill`의 검증된 성공 결과가 없습니다. " +
-               "따라서 실제 설치 완료로 볼 수 없으며, 원본 다운로드 → `SKILL.md` 검증 → 목적지 재검증이 성공한 뒤에만 설치 완료로 표시합니다.";
+        return verified
+            ? answer +
+              "\n\n> ℹ️ 정확히는 **Skill 지침 등록 완료**입니다. `SKILL.md`를 검증해 등록했으며, " +
+              "프로그램·런타임·SDK·의존성 설치나 로그인은 수행하지 않았습니다."
+            : answer +
+              "\n\n> ⚠️ 지침 등록 상태 정정: 이번 실행에는 `install_skill`의 검증된 성공 결과가 없습니다. " +
+              "따라서 Skill 지침 등록도 완료된 것으로 볼 수 없습니다.";
     }
 
-    private static bool IsVerifiedSkillInstall(object? value)
+    private static bool IsVerifiedSkillGuidance(object? value)
     {
         if (value is null) return false;
         var json = value as string ?? JsonSerializer.Serialize(value);
@@ -1003,7 +1007,7 @@ public sealed class LlmHarness : IAsyncDisposable
             using var document = JsonDocument.Parse(json);
             var root = document.RootElement;
             return root.ValueKind == JsonValueKind.Object &&
-                   root.TryGetProperty("installed", out var installed) && installed.ValueKind == JsonValueKind.True &&
+                   root.TryGetProperty("registered", out var registered) && registered.ValueKind == JsonValueKind.True &&
                    root.TryGetProperty("verified", out var verified) && verified.ValueKind == JsonValueKind.True;
         }
         catch (JsonException) { return false; }

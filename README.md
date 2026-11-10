@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/TRIPLESONG90/silaa/releases/tag/v0.9.0-preview.4"><img alt="GitHub prerelease" src="https://img.shields.io/github/v/release/TRIPLESONG90/silaa?include_prereleases&style=flat-square&label=release"></a>
+  <a href="https://github.com/TRIPLESONG90/silaa/releases/tag/v0.9.0-preview.5"><img alt="GitHub prerelease" src="https://img.shields.io/github/v/release/TRIPLESONG90/silaa?include_prereleases&style=flat-square&label=release"></a>
   <a href="https://github.com/TRIPLESONG90/silaa/releases"><img alt="GitHub downloads" src="https://img.shields.io/github/downloads/TRIPLESONG90/silaa/total?style=flat-square"></a>
   <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square">
   <img alt="Avalonia 12" src="https://img.shields.io/badge/Avalonia-12.1-111111?style=flat-square">
@@ -46,13 +46,13 @@ silaa는 코딩 하네스의 강력한 로컬 도구 사용 능력을 일반 사
 
 ### Windows x64 프리뷰
 
-[**silaa 0.9.0 Preview 4 다운로드**](https://github.com/TRIPLESONG90/silaa/releases/download/v0.9.0-preview.4/silaa-0.9.0-preview.4-win-x64.zip)
+[**silaa 0.9.0 Preview 5 다운로드**](https://github.com/TRIPLESONG90/silaa/releases/download/v0.9.0-preview.5/silaa-0.9.0-preview.5-win-x64.zip)
 
 1. ZIP 파일을 내려받아 원하는 폴더에 압축을 풉니다.
 2. `silaa.exe`를 실행합니다.
 3. **설정 → LLM 연결**에서 OpenAI 호환 API 주소, 모델과 API 키를 등록합니다.
 
-자체 포함형 빌드라 별도의 .NET 런타임 설치가 필요하지 않습니다. 현재 실행 파일은 코드 서명이 없는 프리뷰이므로 Windows SmartScreen 경고가 표시될 수 있습니다. 배포 파일과 SHA-256 체크섬은 [Release 페이지](https://github.com/TRIPLESONG90/silaa/releases/tag/v0.9.0-preview.4)에서 함께 제공합니다.
+자체 포함형 빌드라 별도의 .NET 런타임 설치가 필요하지 않습니다. 현재 실행 파일은 코드 서명이 없는 프리뷰이므로 Windows SmartScreen 경고가 표시될 수 있습니다. 배포 파일과 SHA-256 체크섬은 [Release 페이지](https://github.com/TRIPLESONG90/silaa/releases/tag/v0.9.0-preview.5)에서 함께 제공합니다.
 
 ## 주요 기능
 
@@ -72,7 +72,7 @@ silaa는 코딩 하네스의 강력한 로컬 도구 사용 능력을 일반 사
 - 프로젝트별 세션, 파일, 웹 주소, 코드와 비정형 자료 관리
 - 전체·프로젝트·세션 범위의 폴더 접근 권한
 - 프로젝트 Memory와 DPAPI로 보호되는 Vault
-- Claude Code·Codex 형식의 `SKILL.md` 검색, 설치와 로딩
+- Claude Code·Codex 형식의 `SKILL.md` 검색, 웹 가이드 지침 등록과 로딩
 
 ### 일정과 자동화
 

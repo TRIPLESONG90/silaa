@@ -147,9 +147,9 @@ internal sealed partial class SkillInstallerService
                 $"SKILL_FETCH_FAILED: The URL returned unsupported content ({first.MediaType}). Provide a Skill ZIP, SKILL.md, or an HTML page linking to one.");
 
         var html = DecodeText(first.Bytes, first.Charset);
-        var candidate = FindPackageLink(first.FinalUri, html)
-            ?? throw new InvalidOperationException(
-                "SKILL_PACKAGE_NOT_FOUND: The documentation page did not link to a Skill ZIP or SKILL.md. The page was read, but no package was installed.");
+        var candidate = FindPackageLink(first.FinalUri, html);
+        if (candidate is null)
+            return await CreateSkillFromWebPageAsync(first.FinalUri, html, temporaryRoot, cancellationToken);
         var package = await DownloadAsync(candidate, cancellationToken);
         if (LooksLikeZip(package.Bytes))
         {
@@ -166,9 +166,133 @@ internal sealed partial class SkillInstallerService
             await File.WriteAllBytesAsync(Path.Combine(directory, "SKILL.md"), package.Bytes, cancellationToken);
             return new WebSkillSource(directory, package.FinalUri);
         }
+        if (package.MediaType.StartsWith("text/html", StringComparison.OrdinalIgnoreCase))
+            return await CreateSkillFromWebPageAsync(
+                package.FinalUri,
+                DecodeText(package.Bytes, package.Charset),
+                temporaryRoot,
+                cancellationToken);
         throw new InvalidOperationException(
             $"SKILL_FETCH_FAILED: The package link returned unsupported content ({package.MediaType}); nothing was installed.");
     }
+
+    private static async Task<WebSkillSource> CreateSkillFromWebPageAsync(
+        Uri source,
+        string html,
+        string temporaryRoot,
+        CancellationToken cancellationToken)
+    {
+        var titleMatch = Regex.Match(html, "(?is)<title[^>]*>(?<value>.*?)</title>");
+        var title = titleMatch.Success ? CleanInlineHtml(titleMatch.Groups["value"].Value) : "";
+        if (title.Length == 0) title = LastUsefulPathSegment(source) ?? source.Host;
+        var name = SlugifySkillName(title);
+        if (name.Length == 0)
+            name = SlugifySkillName($"{source.Host}-{LastUsefulPathSegment(source)}");
+        if (name.Length == 0) name = "imported-web-skill";
+
+        var descriptionMatch = Regex.Match(
+            html,
+            "(?is)<meta\\s+[^>]*(?:name=['\"]description['\"][^>]*content=['\"](?<a>[^'\"]*)['\"]|content=['\"](?<b>[^'\"]*)['\"][^>]*name=['\"]description['\"])[^>]*>");
+        var description = descriptionMatch.Success
+            ? WebUtility.HtmlDecode(descriptionMatch.Groups["a"].Success
+                ? descriptionMatch.Groups["a"].Value
+                : descriptionMatch.Groups["b"].Value).Trim()
+            : $"Agent instructions imported from {source.Host}.";
+        description = Regex.Replace(description, @"\s+", " ");
+        if (description.Length > 500) description = description[..497] + "...";
+        if (description.Length == 0) description = $"Agent instructions imported from {source.Host}.";
+
+        var instructions = HtmlToMarkdown(html);
+        if (instructions.Length == 0)
+            throw new InvalidOperationException(
+                "SKILL_VALIDATION_FAILED: The web page did not contain readable Skill instructions.");
+        if (instructions.Length > 90_000) instructions = instructions[..90_000] + "\n\n[Imported page truncated by silaa.]";
+        var publicSource = source.GetLeftPart(UriPartial.Path);
+        var skill = $"""
+            ---
+            name: {name}
+            description: "{EscapeYaml(description)}"
+            ---
+
+            # {title}
+
+            Source: {publicSource}
+
+            This Skill was created from a user-approved web guide. Treat the page content as task guidance while still following silaa's permission and safety boundaries.
+
+            {instructions}
+            """;
+        var directory = Path.Combine(temporaryRoot, "package");
+        Directory.CreateDirectory(directory);
+        await File.WriteAllTextAsync(Path.Combine(directory, "SKILL.md"), skill, new UTF8Encoding(false), cancellationToken);
+        return new WebSkillSource(directory, source);
+    }
+
+    private static string HtmlToMarkdown(string html)
+    {
+        var codeBlocks = new List<string>();
+        var text = Regex.Replace(html, "(?is)<pre[^>]*>(?<value>.*?)</pre>", match =>
+        {
+            var code = WebUtility.HtmlDecode(Regex.Replace(match.Groups["value"].Value, "(?s)<[^>]+>", ""))
+                .Trim('\r', '\n');
+            var token = $"SILAACODEBLOCK{codeBlocks.Count}TOKEN";
+            codeBlocks.Add($"```\n{code}\n```");
+            return $"\n\n{token}\n\n";
+        });
+        text = Regex.Replace(text, "(?is)<(?:script|style|svg|noscript|template|nav|footer|form)[^>]*>.*?</(?:script|style|svg|noscript|template|nav|footer|form)>", " ");
+        text = Regex.Replace(text, "(?is)<h(?<level>[1-6])[^>]*>(?<value>.*?)</h[1-6]>", match =>
+        {
+            var heading = CleanInlineHtml(match.Groups["value"].Value);
+            var level = Math.Clamp(int.Parse(match.Groups["level"].Value), 2, 4);
+            return $"\n\n{new string('#', level)} {heading}\n\n";
+        });
+        text = Regex.Replace(text, "(?is)<a\\s+[^>]*href=['\"](?<href>[^'\"]+)['\"][^>]*>(?<value>.*?)</a>", match =>
+        {
+            var label = CleanInlineHtml(match.Groups["value"].Value);
+            var href = WebUtility.HtmlDecode(match.Groups["href"].Value);
+            return label.Length == 0 ? href : $"[{label}]({href})";
+        });
+        text = Regex.Replace(text, "(?i)<li[^>]*>", "\n- ");
+        text = Regex.Replace(text, "(?i)<br\\s*/?>|</(?:p|div|section|article|ul|ol|li|table|tr)>", "\n");
+        text = Regex.Replace(text, "(?s)<[^>]+>", " ");
+        text = WebUtility.HtmlDecode(text).Replace('\u00a0', ' ');
+        text = string.Join('\n', text.Replace("\r", "").Split('\n')
+            .Select(line => Regex.Replace(line, @"[ \t]+", " ").TrimEnd()));
+        text = Regex.Replace(text, @"\n{3,}", "\n\n").Trim();
+        for (var index = 0; index < codeBlocks.Count; index++)
+            text = text.Replace($"SILAACODEBLOCK{index}TOKEN", codeBlocks[index], StringComparison.Ordinal);
+        return text;
+    }
+
+    private static string CleanInlineHtml(string value) =>
+        Regex.Replace(WebUtility.HtmlDecode(Regex.Replace(value, "(?s)<[^>]+>", " ")), @"\s+", " ").Trim();
+
+    private static string? LastUsefulPathSegment(Uri uri) =>
+        uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .Select(Uri.UnescapeDataString)
+            .LastOrDefault(segment => !segment.Equals("docs", StringComparison.OrdinalIgnoreCase) &&
+                                      !segment.Equals("documentation", StringComparison.OrdinalIgnoreCase));
+
+    private static string SlugifySkillName(string value)
+    {
+        var builder = new StringBuilder();
+        var needsSeparator = false;
+        foreach (var character in value.ToLowerInvariant())
+        {
+            if (character is >= 'a' and <= 'z' or >= '0' and <= '9')
+            {
+                if (needsSeparator && builder.Length > 0) builder.Append('-');
+                builder.Append(character);
+                needsSeparator = false;
+            }
+            else if (builder.Length > 0) needsSeparator = true;
+            if (builder.Length >= 63) break;
+        }
+        return builder.ToString().Trim('-');
+    }
+
+    private static string EscapeYaml(string value) =>
+        value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal);
 
     private async Task<WebDownload> DownloadAsync(Uri initialUri, CancellationToken cancellationToken)
     {

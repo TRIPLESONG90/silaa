@@ -18,7 +18,7 @@
                        Foreground="{DynamicResource SiMutedBrush}" Text="CAPABILITIES" />
             <TextBlock FontSize="24" FontWeight="SemiBold" Text="Skill" />
             <TextBlock FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
-                       Text="복잡한 하네스 설정 없이, 필요한 작업 방식을 설치하고 대화로 바로 사용합니다." />
+                       Text="필요한 작업 지침을 등록하고 다음 대화부터 Agent가 참고하도록 합니다." />
           </StackPanel>
           <Border Grid.Column="1" VerticalAlignment="Top" Padding="9,4" CornerRadius="12"
                   Background="{DynamicResource SiRaisedBrush}">
@@ -32,13 +32,13 @@
           <StackPanel Spacing="13">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
               <StackPanel Spacing="4">
-                <TextBlock FontSize="14" FontWeight="SemiBold" Text="새 Skill 설치" />
+                <TextBlock FontSize="14" FontWeight="SemiBold" Text="Skill 지침 등록" />
                 <TextBlock FontSize="10.75" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}"
-                           Text="GitHub 주소를 붙여넣거나 내 컴퓨터의 Skill 폴더를 선택하세요. 설치 중 스크립트는 실행되지 않습니다." />
+                           Text="웹 가이드, GitHub, SKILL.md 또는 내 컴퓨터의 Skill 폴더를 선택하세요. 프로그램이나 의존성은 설치하지 않습니다." />
               </StackPanel>
               <Border Grid.Column="1" Padding="8,3" CornerRadius="10"
                       Background="{DynamicResource SiRaisedBrush}" VerticalAlignment="Top">
-                <TextBlock FontSize="9.5" Text="검사 후 설치" />
+                <TextBlock FontSize="9.5" Text="검사 후 등록" />
               </Border>
             </Grid>
 
@@ -69,7 +69,7 @@
                            Text="{Binding Status}" />
               </StackPanel>
               <Button Grid.Column="1" MinWidth="112" Padding="16,10"
-                      Command="{Binding InstallCommand}" Content="설치하기" />
+                      Command="{Binding InstallCommand}" Content="지침 등록" />
             </Grid>
           </StackPanel>
         </Border>
@@ -79,7 +79,7 @@
                 BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="1">
           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
             <StackPanel Spacing="3">
-              <TextBlock FontSize="12" FontWeight="SemiBold" Text="설치가 끝났나요?" />
+              <TextBlock FontSize="12" FontWeight="SemiBold" Text="등록이 끝났나요?" />
               <TextBlock FontSize="10.75" Foreground="{DynamicResource SiMutedBrush}"
                          Text="새 대화에서 ‘이 실습 시작해줘’라고 말하면 silaa가 준비 상태부터 확인합니다." />
             </StackPanel>
@@ -89,7 +89,7 @@
         </Border>
 
         <StackPanel Spacing="6">
-          <TextBlock FontSize="12" FontWeight="SemiBold" Text="설치된 Skill" />
+          <TextBlock FontSize="12" FontWeight="SemiBold" Text="등록된 Skill 지침" />
           <TextBox Text="{Binding SearchText, Mode=TwoWay}" PlaceholderText="이름이나 작업 설명으로 검색" />
         </StackPanel>
 
