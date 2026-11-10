@@ -721,6 +721,7 @@ public sealed class LlmHarness : IAsyncDisposable
                 : BuildHistory(_sessions.Messages(sessionId), settings);
             var answer = new StringBuilder();
             var toolNames = new Dictionary<string, string>(StringComparer.Ordinal);
+            var verifiedSkillInstall = false;
 
             onEvent?.Invoke(new ChatRunEvent("status", "Microsoft Agent Framework 실행 중…", sessionId));
             try
@@ -748,6 +749,9 @@ public sealed class LlmHarness : IAsyncDisposable
                                 var name = !string.IsNullOrWhiteSpace(functionResult.CallId) &&
                                            toolNames.TryGetValue(functionResult.CallId, out var toolName)
                                     ? toolName : "도구";
+                                if (name.Equals("install_skill", StringComparison.Ordinal) &&
+                                    functionResult.Exception is null && IsVerifiedSkillInstall(functionResult.Result))
+                                    verifiedSkillInstall = true;
                                 if (!IsOnboardingTool(name))
                                     onEvent?.Invoke(new ChatRunEvent("tool_result", FormatToolResult(name, functionResult), sessionId, functionResult.CallId));
                                 break;
@@ -782,7 +786,10 @@ public sealed class LlmHarness : IAsyncDisposable
                     $"LLM API 또는 도구가 {timeoutSeconds}초 동안 진행되지 않았습니다.{hint}");
             }
 
-            var result = NormalizeTextParts(answer.ToString()).Trim();
+            var streamedResult = NormalizeTextParts(answer.ToString()).Trim();
+            var result = EnsureVerifiedSkillInstallClaim(prompt, streamedResult, verifiedSkillInstall);
+            if (result.Length > streamedResult.Length)
+                onEvent?.Invoke(new ChatRunEvent("text", result[streamedResult.Length..], sessionId));
             if (result.Length == 0) throw new LlmUnavailableException("LLM이 빈 응답을 반환했습니다.");
             if (!setupMode)
                 _sessions.Append(sessionId, new StoredChatMessage
@@ -972,6 +979,35 @@ public sealed class LlmHarness : IAsyncDisposable
 
     internal static string EffectiveReasoningEffort(string configuredEffort, string? setupKind) =>
         setupKind == "calendar" ? "low" : configuredEffort;
+
+    internal static string EnsureVerifiedSkillInstallClaim(string prompt, string answer, bool verified)
+    {
+        if (verified || string.IsNullOrWhiteSpace(answer) ||
+            !Regex.IsMatch(prompt,
+                "(?i)(skill|스킬).{0,40}(install|설치|추가)|(?:install|설치).{0,40}(?:skill|스킬)"))
+            return answer;
+        var claimsSuccess = Regex.IsMatch(answer,
+            "(?i)(설치(?:를|가|는)?\\s*(?:완료|성공|했습니다|하였습니다|됐|되었)|installed\\s+successfully|installation\\s+(?:is\\s+)?complete)");
+        if (!claimsSuccess) return answer;
+        return answer +
+               "\n\n> ⚠️ 설치 상태 정정: 이번 실행에는 `install_skill`의 검증된 성공 결과가 없습니다. " +
+               "따라서 실제 설치 완료로 볼 수 없으며, 원본 다운로드 → `SKILL.md` 검증 → 목적지 재검증이 성공한 뒤에만 설치 완료로 표시합니다.";
+    }
+
+    private static bool IsVerifiedSkillInstall(object? value)
+    {
+        if (value is null) return false;
+        var json = value as string ?? JsonSerializer.Serialize(value);
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            var root = document.RootElement;
+            return root.ValueKind == JsonValueKind.Object &&
+                   root.TryGetProperty("installed", out var installed) && installed.ValueKind == JsonValueKind.True &&
+                   root.TryGetProperty("verified", out var verified) && verified.ValueKind == JsonValueKind.True;
+        }
+        catch (JsonException) { return false; }
+    }
 
     private static string FormatToolCall(FunctionCallContent call)
     {

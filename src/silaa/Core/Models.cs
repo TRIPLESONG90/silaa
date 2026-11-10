@@ -20,6 +20,7 @@ public sealed class AppSettings
     public int? Seed { get; set; }
     public int RequestTimeoutSeconds { get; set; }
     public string ReasoningEffort { get; set; } = "";
+    public bool AutoUpdateEnabled { get; set; }
 }
 
 public sealed class LlmConnectionProfile

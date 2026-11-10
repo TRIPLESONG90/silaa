@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.IO.Compression;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
@@ -1435,6 +1436,15 @@ if (OperatingSystem.IsWindows())
         var themed = new LocalStore(root);
         Assert(themed.Settings.Theme == "light", "theme setting round-trip");
         Assert(themed.Settings.ReasoningEffort == "high", "reasoning effort setting round-trip");
+        themed.SaveAutoUpdateEnabled(true);
+        Assert(new LocalStore(root).Settings.AutoUpdateEnabled,
+            "automatic GitHub Release update preference persists independently");
+        Assert(ReleaseUpdateService.IsNewerVersion("0.9.0-preview.2", "0.9.0-preview.3") &&
+               ReleaseUpdateService.IsNewerVersion("0.9.0-preview.3", "0.9.0") &&
+               !ReleaseUpdateService.IsNewerVersion("0.9.0", "0.9.0-preview.4") &&
+               !ReleaseUpdateService.IsNewerVersion("0.9.0-preview.3", "0.9.0-preview.2"),
+            "release updater orders preview and stable semantic versions safely");
+        themed.SaveAutoUpdateEnabled(false);
         Assert(themed.SetActiveReasoningEffort("low").ReasoningEffort == "low" &&
                new LocalStore(root).ActiveConnection?.ReasoningEffort == "low",
             "status-bar reasoning changes persist immediately on the active LLM connection");
@@ -1621,9 +1631,23 @@ if (OperatingSystem.IsWindows())
         File.WriteAllText(Path.Combine(importSource, "references", "checklist.md"), "# Checklist\n", Encoding.UTF8);
         var installer = new SkillInstallerService(workspace, root);
         var installedSkill = await installer.InstallAsync(importSource, "", "project", false);
-        Assert(installedSkill.Name == "lab-helper" && installedSkill.FileCount == 2 &&
+        Assert(installedSkill.Name == "lab-helper" && installedSkill.Verified && installedSkill.FileCount == 2 &&
                File.Exists(Path.Combine(workspace, ".silaa", "skills", "lab-helper", "references", "checklist.md")),
             "skill installer validates and atomically copies a complete local package");
+        await using (var webSkillServer = new MockSkillServer())
+        {
+            var webInstalledSkill = await installer.InstallAsync(webSkillServer.DocumentationUrl, "", "project", false);
+            Assert(webInstalledSkill.Name == "web-lab-helper" && webInstalledSkill.Verified &&
+                   webInstalledSkill.Source.EndsWith("dlstudio-skill.zip", StringComparison.Ordinal) &&
+                   File.Exists(Path.Combine(workspace, ".silaa", "skills", "web-lab-helper", "SKILL.md")),
+                "skill installer follows a documentation-page package link and verifies the installed files");
+        }
+        var correctedInstallClaim = LlmHarness.EnsureVerifiedSkillInstallClaim(
+            "DLStudio 스킬 설치해줘", "DLStudio 에이전트 스킬 설치를 완료했습니다.", verified: false);
+        Assert(correctedInstallClaim.Contains("설치 상태 정정", StringComparison.Ordinal) &&
+               LlmHarness.EnsureVerifiedSkillInstallClaim(
+                   "DLStudio 스킬 설치해줘", "설치 완료", verified: true) == "설치 완료",
+            "unverified LLM installation claims are corrected while verified tool results remain unchanged");
         await AssertThrowsAsync<InvalidOperationException>(
             () => installer.InstallAsync(importSource, "", "project", false),
             "skill installer refuses implicit replacement");
@@ -2065,6 +2089,76 @@ sealed class StubWebHandler : HttpMessageHandler
     {
         Content = new StringContent(content, Encoding.UTF8, "text/html")
     };
+}
+
+sealed class MockSkillServer : IAsyncDisposable
+{
+    private readonly TcpListener _listener = new(IPAddress.Loopback, 0);
+    private readonly CancellationTokenSource _stop = new();
+    private readonly Task _loop;
+    private readonly byte[] _skillZip;
+
+    public MockSkillServer()
+    {
+        using var buffer = new MemoryStream();
+        using (var archive = new ZipArchive(buffer, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            var entry = archive.CreateEntry("web-lab-helper/SKILL.md");
+            using var writer = new StreamWriter(entry.Open(), new UTF8Encoding(false));
+            writer.Write("---\nname: web-lab-helper\ndescription: \"Guide a web-delivered practice lab.\"\n---\n\n# Web lab helper\n\nFollow the verified package.\n");
+        }
+        _skillZip = buffer.ToArray();
+        _listener.Start();
+        var port = ((IPEndPoint)_listener.LocalEndpoint).Port;
+        DocumentationUrl = $"http://127.0.0.1:{port}/docs/agent-skill/";
+        _loop = AcceptAsync();
+    }
+
+    public string DocumentationUrl { get; }
+
+    private async Task AcceptAsync()
+    {
+        while (!_stop.IsCancellationRequested)
+        {
+            try
+            {
+                var client = await _listener.AcceptTcpClientAsync(_stop.Token);
+                _ = HandleAsync(client);
+            }
+            catch (OperationCanceledException) { break; }
+            catch (ObjectDisposedException) { break; }
+        }
+    }
+
+    private async Task HandleAsync(TcpClient client)
+    {
+        using (client)
+        {
+            var stream = client.GetStream();
+            using var reader = new StreamReader(stream, Encoding.ASCII, false, 1024, true);
+            var requestLine = await reader.ReadLineAsync();
+            string? header;
+            while (!string.IsNullOrEmpty(header = await reader.ReadLineAsync())) { }
+            var path = requestLine?.Split(' ', StringSplitOptions.RemoveEmptyEntries).ElementAtOrDefault(1) ?? "/";
+            var isZip = path.EndsWith("dlstudio-skill.zip", StringComparison.Ordinal);
+            var payload = isZip
+                ? _skillZip
+                : Encoding.UTF8.GetBytes("<html><body><a href='/downloads/dlstudio-skill.zip'>Download Agent Skill</a></body></html>");
+            var contentType = isZip ? "application/zip" : "text/html; charset=utf-8";
+            var response = Encoding.ASCII.GetBytes(
+                $"HTTP/1.1 200 OK\r\nContent-Type: {contentType}\r\nContent-Length: {payload.Length}\r\nConnection: close\r\n\r\n");
+            await stream.WriteAsync(response);
+            await stream.WriteAsync(payload);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _stop.Cancel();
+        _listener.Stop();
+        try { await _loop; } catch (OperationCanceledException) { }
+        _stop.Dispose();
+    }
 }
 
 sealed class MockOpenAiServer : IAsyncDisposable

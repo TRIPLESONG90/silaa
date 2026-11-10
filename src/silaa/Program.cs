@@ -4,6 +4,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Themes.Fluent;
 using Avalonia.Markup.Xaml;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using silaa.Services;
 using silaa.UI;
 
@@ -106,6 +107,7 @@ public sealed partial class SilaaApplication : Application
             {
                 if (_trayIcon is not null) WindowsNotification.Show(_trayIcon, title, message, warning);
             });
+            window.Opened += (_, _) => _ = RunAutomaticUpdateAsync(desktop, window);
             desktop.Exit += (_, _) =>
             {
                 TrayIcon.SetIcons(this, null);
@@ -116,5 +118,40 @@ public sealed partial class SilaaApplication : Application
             };
         }
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private async Task RunAutomaticUpdateAsync(
+        IClassicDesktopStyleApplicationLifetime desktop,
+        MainWindow window)
+    {
+        if (!_store.Settings.AutoUpdateEnabled) return;
+        try
+        {
+            var updater = new ReleaseUpdateService(_store.Root);
+            var check = await updater.CheckAsync();
+            if (check.Release is null) return;
+            if (_trayIcon is not null)
+                WindowsNotification.Show(_trayIcon, "silaa 업데이트", $"{check.Release.Tag}을 다운로드하고 있습니다.", false);
+            var package = await updater.DownloadAndVerifyAsync(check.Release);
+            if (!updater.LaunchInstaller(package))
+            {
+                if (_trayIcon is not null)
+                    WindowsNotification.Show(_trayIcon, "업데이트 준비 완료",
+                        "패키지를 검증했지만 현재 실행 위치에서는 자동 교체할 수 없습니다.", true);
+                return;
+            }
+            if (_trayIcon is not null)
+                WindowsNotification.Show(_trayIcon, "silaa 업데이트",
+                    "검증이 끝났습니다. 업데이트 후 자동으로 다시 실행합니다.", false);
+            await Task.Delay(350);
+            desktop.Shutdown();
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException or IOException or
+                                           InvalidOperationException or TaskCanceledException)
+        {
+            CrashLog.Write("AutoUpdate", exception);
+            if (_trayIcon is not null)
+                WindowsNotification.Show(_trayIcon, "자동 업데이트 실패", exception.Message, true);
+        }
     }
 }

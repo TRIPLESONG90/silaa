@@ -1,4 +1,7 @@
 using System.Diagnostics;
+using System.IO.Compression;
+using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -11,12 +14,15 @@ internal sealed record SkillInstallResult(
     string Destination,
     int FileCount,
     long TotalBytes,
-    string Source);
+    string Source,
+    bool Verified);
 
 internal sealed partial class SkillInstallerService
 {
     private const int MaximumFiles = 500;
     private const long MaximumBytes = 50L * 1024 * 1024;
+    private const long MaximumDownloadBytes = MaximumBytes + 5L * 1024 * 1024;
+    private const int MaximumRedirects = 5;
     private readonly string _workspace;
     private readonly string _globalSkillsRoot;
     private readonly Func<string, bool> _hasSourceAccess;
@@ -38,6 +44,11 @@ internal sealed partial class SkillInstallerService
         Uri.TryCreate(source.Trim(), UriKind.Absolute, out var uri) &&
         uri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase) &&
         uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase);
+
+    public static bool IsWebSource(string source) =>
+        Uri.TryCreate(source.Trim(), UriKind.Absolute, out var uri) &&
+        uri.Scheme is "http" or "https" &&
+        !string.IsNullOrWhiteSpace(uri.Host) && uri.UserInfo.Length == 0;
 
     public static string SourceDirectory(string source)
     {
@@ -75,6 +86,15 @@ internal sealed partial class SkillInstallerService
                 skillDirectory = ResolveSubpath(checkout, github.Subpath);
                 sourceLabel = github.DisplaySource;
             }
+            else if (IsWebSource(source))
+            {
+                var sourceUri = new Uri(source, UriKind.Absolute);
+                temporaryRoot = Path.Combine(Path.GetTempPath(), $"silaa-skill-{Guid.NewGuid():N}");
+                Directory.CreateDirectory(temporaryRoot);
+                var downloaded = await DownloadWebSkillAsync(sourceUri, temporaryRoot, subpath, cancellationToken);
+                skillDirectory = ResolveSubpath(downloaded.Directory, subpath);
+                sourceLabel = downloaded.Source.AbsoluteUri;
+            }
             else
             {
                 var sourceDirectory = SourceDirectory(source);
@@ -97,6 +117,205 @@ internal sealed partial class SkillInstallerService
             if (temporaryRoot is not null) DeleteTemporaryDirectory(temporaryRoot);
         }
     }
+
+    private async Task<WebSkillSource> DownloadWebSkillAsync(
+        Uri sourceUri,
+        string temporaryRoot,
+        string explicitSubpath,
+        CancellationToken cancellationToken)
+    {
+        var first = await DownloadAsync(sourceUri, cancellationToken);
+        if (LooksLikeZip(first.Bytes))
+        {
+            var extracted = Path.Combine(temporaryRoot, "package");
+            ExtractZip(first.Bytes, extracted);
+            return new WebSkillSource(
+                explicitSubpath.Length == 0 ? FindSingleSkillDirectory(extracted) : extracted,
+                first.FinalUri);
+        }
+
+        if (LooksLikeSkillMarkdown(first.MediaType, first.FinalUri, first.Bytes))
+        {
+            var directory = Path.Combine(temporaryRoot, "package");
+            Directory.CreateDirectory(directory);
+            await File.WriteAllBytesAsync(Path.Combine(directory, "SKILL.md"), first.Bytes, cancellationToken);
+            return new WebSkillSource(directory, first.FinalUri);
+        }
+
+        if (!first.MediaType.StartsWith("text/html", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(
+                $"SKILL_FETCH_FAILED: The URL returned unsupported content ({first.MediaType}). Provide a Skill ZIP, SKILL.md, or an HTML page linking to one.");
+
+        var html = DecodeText(first.Bytes, first.Charset);
+        var candidate = FindPackageLink(first.FinalUri, html)
+            ?? throw new InvalidOperationException(
+                "SKILL_PACKAGE_NOT_FOUND: The documentation page did not link to a Skill ZIP or SKILL.md. The page was read, but no package was installed.");
+        var package = await DownloadAsync(candidate, cancellationToken);
+        if (LooksLikeZip(package.Bytes))
+        {
+            var extracted = Path.Combine(temporaryRoot, "package");
+            ExtractZip(package.Bytes, extracted);
+            return new WebSkillSource(
+                explicitSubpath.Length == 0 ? FindSingleSkillDirectory(extracted) : extracted,
+                package.FinalUri);
+        }
+        if (LooksLikeSkillMarkdown(package.MediaType, package.FinalUri, package.Bytes))
+        {
+            var directory = Path.Combine(temporaryRoot, "package");
+            Directory.CreateDirectory(directory);
+            await File.WriteAllBytesAsync(Path.Combine(directory, "SKILL.md"), package.Bytes, cancellationToken);
+            return new WebSkillSource(directory, package.FinalUri);
+        }
+        throw new InvalidOperationException(
+            $"SKILL_FETCH_FAILED: The package link returned unsupported content ({package.MediaType}); nothing was installed.");
+    }
+
+    private async Task<WebDownload> DownloadAsync(Uri initialUri, CancellationToken cancellationToken)
+    {
+        using var client = CreateHttpClient();
+        var current = initialUri;
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMinutes(2));
+        for (var redirect = 0; redirect <= MaximumRedirects; redirect++)
+        {
+            var decision = _security?.InspectNetworkUri(current, "skill.install");
+            if (decision is { Allowed: false }) throw new InvalidOperationException(decision.Message);
+            using var request = new HttpRequestMessage(HttpMethod.Get, current);
+            request.Headers.UserAgent.ParseAdd("silaa/0.9 (+skill-installer)");
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/zip"));
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/markdown"));
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/html"));
+            using var response = await client.SendAsync(
+                request, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+            if (IsRedirect(response.StatusCode))
+            {
+                var location = response.Headers.Location
+                    ?? throw new InvalidOperationException("SKILL_FETCH_FAILED: The redirect response had no destination.");
+                current = location.IsAbsoluteUri ? location : new Uri(current, location);
+                if (current.Scheme is not ("http" or "https") || current.UserInfo.Length > 0)
+                    throw new InvalidOperationException("SKILL_FETCH_FAILED: The redirect destination is not a safe HTTP(S) URL.");
+                continue;
+            }
+            if (!response.IsSuccessStatusCode)
+                throw new InvalidOperationException(
+                    $"SKILL_FETCH_FAILED: HTTP {(int)response.StatusCode} {response.ReasonPhrase} from {current.Host}; nothing was installed.");
+            var bytes = await ReadBoundedAsync(response.Content, timeout.Token);
+            var mediaType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+            var charset = response.Content.Headers.ContentType?.CharSet?.Trim('"');
+            return new WebDownload(current, mediaType, charset, bytes);
+        }
+        throw new InvalidOperationException($"SKILL_FETCH_FAILED: More than {MaximumRedirects} redirects were returned.");
+    }
+
+    private static async Task<byte[]> ReadBoundedAsync(HttpContent content, CancellationToken cancellationToken)
+    {
+        if (content.Headers.ContentLength is > MaximumDownloadBytes)
+            throw new InvalidOperationException("SKILL_FETCH_FAILED: The download exceeds the 55 MB safety limit.");
+        await using var input = await content.ReadAsStreamAsync(cancellationToken);
+        using var output = new MemoryStream();
+        var buffer = new byte[16_384];
+        while (true)
+        {
+            var read = await input.ReadAsync(buffer, cancellationToken);
+            if (read == 0) break;
+            if (output.Length + read > MaximumDownloadBytes)
+                throw new InvalidOperationException("SKILL_FETCH_FAILED: The download exceeds the 55 MB safety limit.");
+            output.Write(buffer, 0, read);
+        }
+        return output.ToArray();
+    }
+
+    private static Uri? FindPackageLink(Uri pageUri, string html)
+    {
+        return Regex.Matches(html, "(?is)\\bhref\\s*=\\s*['\"](?<url>[^'\"#]+)['\"]")
+            .Select(match => WebUtility.HtmlDecode(match.Groups["url"].Value.Trim()))
+            .Select(value => Uri.TryCreate(pageUri, value, out var uri) ? uri : null)
+            .Where(uri => uri is not null && uri.Scheme is "http" or "https" && uri.UserInfo.Length == 0)
+            .Cast<Uri>()
+            .Where(uri => uri.AbsolutePath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) ||
+                          uri.AbsolutePath.EndsWith("SKILL.md", StringComparison.OrdinalIgnoreCase) ||
+                          (uri.PathAndQuery.Contains("skill", StringComparison.OrdinalIgnoreCase) &&
+                           uri.PathAndQuery.Contains("download", StringComparison.OrdinalIgnoreCase)))
+            .OrderByDescending(uri => uri.AbsolutePath.Contains("skill", StringComparison.OrdinalIgnoreCase))
+            .ThenByDescending(uri => uri.AbsolutePath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault();
+    }
+
+    private static void ExtractZip(byte[] bytes, string destination)
+    {
+        Directory.CreateDirectory(destination);
+        using var archive = new ZipArchive(new MemoryStream(bytes, writable: false), ZipArchiveMode.Read);
+        if (archive.Entries.Count > MaximumFiles)
+            throw new InvalidOperationException($"SKILL_VALIDATION_FAILED: Skill packages can contain at most {MaximumFiles} entries.");
+        long total = 0;
+        foreach (var entry in archive.Entries)
+        {
+            if (((entry.ExternalAttributes >> 16) & 0xF000) == 0xA000)
+                throw new InvalidOperationException("SKILL_VALIDATION_FAILED: Skill ZIP files cannot contain symbolic links.");
+            total += entry.Length;
+            if (total > MaximumBytes)
+                throw new InvalidOperationException("SKILL_VALIDATION_FAILED: Expanded Skill packages can contain at most 50 MB.");
+            var normalizedName = entry.FullName.Replace('\\', '/');
+            if (normalizedName.Split('/', StringSplitOptions.RemoveEmptyEntries).Any(part => part is "." or ".."))
+                throw new InvalidOperationException("SKILL_VALIDATION_FAILED: The Skill ZIP contains an unsafe path.");
+            var target = Path.GetFullPath(Path.Combine(destination, normalizedName.Replace('/', Path.DirectorySeparatorChar)));
+            if (!FolderAccessPolicy.IsInside(target, destination))
+                throw new InvalidOperationException("SKILL_VALIDATION_FAILED: A Skill ZIP entry escaped the extraction folder.");
+            if (normalizedName.EndsWith('/'))
+            {
+                Directory.CreateDirectory(target);
+                continue;
+            }
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            using var input = entry.Open();
+            using var output = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            input.CopyTo(output);
+        }
+    }
+
+    private static string FindSingleSkillDirectory(string extractedRoot)
+    {
+        var matches = Directory.EnumerateFiles(extractedRoot, "SKILL.md", SearchOption.AllDirectories)
+            .Select(Path.GetDirectoryName).Where(path => path is not null).Cast<string>().ToList();
+        return matches.Count switch
+        {
+            1 => matches[0],
+            0 => throw new InvalidOperationException("SKILL_VALIDATION_FAILED: The downloaded package does not contain SKILL.md."),
+            _ => throw new InvalidOperationException(
+                "SKILL_VALIDATION_FAILED: The downloaded package contains multiple Skills. Provide the package subpath explicitly.")
+        };
+    }
+
+    private static bool LooksLikeZip(byte[] bytes) =>
+        bytes.Length >= 4 && bytes[0] == (byte)'P' && bytes[1] == (byte)'K' &&
+        (bytes[2] == 3 || bytes[2] == 5 || bytes[2] == 7) &&
+        bytes[3] is 4 or 6 or 8;
+
+    private static bool LooksLikeSkillMarkdown(string mediaType, Uri uri, byte[] bytes)
+    {
+        if (uri.AbsolutePath.EndsWith("SKILL.md", StringComparison.OrdinalIgnoreCase)) return true;
+        if (!mediaType.Contains("markdown", StringComparison.OrdinalIgnoreCase) &&
+            !mediaType.StartsWith("text/plain", StringComparison.OrdinalIgnoreCase)) return false;
+        return DecodeText(bytes, null).TrimStart().StartsWith("---", StringComparison.Ordinal);
+    }
+
+    private static string DecodeText(byte[] bytes, string? charset)
+    {
+        Encoding encoding;
+        try { encoding = string.IsNullOrWhiteSpace(charset) ? Encoding.UTF8 : Encoding.GetEncoding(charset); }
+        catch (ArgumentException) { encoding = Encoding.UTF8; }
+        return encoding.GetString(bytes);
+    }
+
+    private static bool IsRedirect(HttpStatusCode statusCode) =>
+        (int)statusCode is 301 or 302 or 303 or 307 or 308;
+
+    private static HttpClient CreateHttpClient() => new(new SocketsHttpHandler
+    {
+        AllowAutoRedirect = false,
+        UseProxy = false,
+        AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate | DecompressionMethods.Brotli
+    }) { Timeout = Timeout.InfiniteTimeSpan };
 
     private async Task CloneAsync(GitHubSkillSource source, string checkout, CancellationToken cancellationToken)
     {
@@ -254,7 +473,7 @@ internal sealed partial class SkillInstallerService
 
         return new SkillInstallResult(
             package.Name, package.Description, scope, destination,
-            package.Files.Count, package.TotalBytes, source);
+            package.Files.Count, package.TotalBytes, source, Verified: true);
     }
 
     private static GitHubSkillSource ParseGitHubSource(string source, string explicitSubpath)
@@ -385,4 +604,6 @@ internal sealed partial class SkillInstallerService
     private sealed record SkillPackageFile(string SourcePath, string RelativePath, long Length);
     private sealed record GitHubSkillSource(
         Uri RepositoryUri, string Reference, string Subpath, string DisplaySource);
+    private sealed record WebSkillSource(string Directory, Uri Source);
+    private sealed record WebDownload(Uri FinalUri, string MediaType, string? Charset, byte[] Bytes);
 }

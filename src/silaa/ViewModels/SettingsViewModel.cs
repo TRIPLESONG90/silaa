@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using silaa.Core;
@@ -13,6 +14,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly LlmHarness _harness;
     private readonly Func<Task<string?>> _pickWorkspace;
     private bool _suppressSelection;
+    private bool _suppressAutoUpdateSave;
 
     public SettingsViewModel(
         LocalStore store,
@@ -59,6 +61,11 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private ReasoningEffortOption _selectedReasoningEffort = ReasoningEffortOption.Default;
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private bool _isEditorOpen;
+    [ObservableProperty] private bool _autoUpdateEnabled;
+    [ObservableProperty] private bool _isCheckingForUpdates;
+    [ObservableProperty] private string _updateStatus = "";
+
+    public string CurrentAppVersion => ReleaseUpdateService.CurrentVersion;
 
     public string ConnectionCountText => $"저장된 연결 {Connections.Count}개";
     public bool HasSelectedConnection => SelectedConnection is not null;
@@ -107,6 +114,15 @@ public partial class SettingsViewModel : ObservableObject
 
     partial void OnSelectedReasoningEffortChanged(ReasoningEffortOption value) =>
         OnPropertyChanged(nameof(ReasoningEffortHelp));
+
+    partial void OnAutoUpdateEnabledChanged(bool value)
+    {
+        if (_suppressAutoUpdateSave) return;
+        _store.SaveAutoUpdateEnabled(value);
+        UpdateStatus = value
+            ? "다음 실행부터 GitHub Release를 확인하고 검증된 업데이트를 자동 설치합니다."
+            : "자동 업데이트를 사용하지 않습니다.";
+    }
 
     [RelayCommand]
     private void NewConnection()
@@ -260,9 +276,37 @@ public partial class SettingsViewModel : ObservableObject
         }
     }
 
+    [RelayCommand(AllowConcurrentExecutions = false)]
+    private async Task CheckForUpdatesAsync()
+    {
+        IsCheckingForUpdates = true;
+        UpdateStatus = "GitHub Release를 확인하는 중…";
+        try
+        {
+            var result = await new ReleaseUpdateService(_store.Root).CheckAsync();
+            UpdateStatus = result.Release is null
+                ? $"현재 {result.CurrentVersion}이 최신 버전입니다."
+                : $"새 버전 {result.Release.Tag}을 사용할 수 있습니다. 자동 업데이트를 켜면 다음 실행 때 설치합니다.";
+        }
+        catch (Exception exception) when (exception is HttpRequestException or JsonException or IOException or InvalidOperationException or TaskCanceledException)
+        {
+            UpdateStatus = $"업데이트 확인 실패: {exception.Message}";
+        }
+        finally
+        {
+            IsCheckingForUpdates = false;
+        }
+    }
+
     private void RefreshFromStore(string? preferredConnectionId, bool clearStatus)
     {
         var settings = _store.Settings;
+        _suppressAutoUpdateSave = true;
+        AutoUpdateEnabled = settings.AutoUpdateEnabled;
+        _suppressAutoUpdateSave = false;
+        UpdateStatus = AutoUpdateEnabled
+            ? "실행할 때 GitHub Release를 자동 확인합니다."
+            : "자동 업데이트가 꺼져 있습니다.";
         Workspace = settings.WorkspacePath;
         GlobalAllowedDirectories.Clear();
         foreach (var directory in settings.GlobalAllowedDirectories)

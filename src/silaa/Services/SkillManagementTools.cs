@@ -35,26 +35,29 @@ internal sealed class SkillManagementTools(
             "Validate the structure, frontmatter, naming, and unfinished placeholders of one project-local skill."),
         AIFunctionFactory.Create((Func<string, string, string, bool, CancellationToken, Task<string>>)InstallSkillAsync,
             "install_skill",
-            "Install a Skill package from an allowed local folder or a github.com repository/folder URL. " +
+            "Install and verify a Skill package from an allowed local folder, GitHub URL, direct ZIP/SKILL.md URL, " +
+            "or an HTTP(S) documentation page that links to one. " +
             "Use project scope by default. Use global or overwrite only when the user explicitly requests it. " +
-            "Installation copies files but never executes packaged scripts.")
+            "Installation copies files but never executes packaged scripts. Never claim success unless verified is true.")
     ];
 
     public async Task<string> InstallSkillAsync(
-        [Description("Allowed local folder, local SKILL.md path, or https://github.com repository/folder URL.")] string source,
+        [Description("Allowed local folder, local SKILL.md path, GitHub URL, direct Skill ZIP/SKILL.md URL, or documentation page URL.")] string source,
         [Description("Optional folder containing SKILL.md relative to the source repository or folder.")] string subpath = "",
         [Description("Install scope: project or global. Prefer project.")] string scope = "project",
         [Description("Replace an installed Skill with the same name. Use only after an explicit update or overwrite request.")] bool overwrite = false,
         CancellationToken cancellationToken = default)
     {
-        if (SkillInstallerService.IsGitHubSource(source) && networkAccess is not null)
+        if (SkillInstallerService.IsWebSource(source) && networkAccess is not null)
         {
+            var uri = new Uri(source.Trim(), UriKind.Absolute);
+            var port = uri.IsDefaultPort ? (uri.Scheme == "http" ? 80 : 443) : uri.Port;
             var network = await networkAccess.RequestNetworkAccessAsync(
-                "github.com", 443, "Download the Skill package requested by the user.", cancellationToken);
+                uri.Host, port, "Read and download the Skill package requested by the user.", cancellationToken);
             if (network.Contains("denied", StringComparison.OrdinalIgnoreCase) ||
                 network.Contains("unavailable", StringComparison.OrdinalIgnoreCase)) return network;
         }
-        else if (!SkillInstallerService.IsGitHubSource(source))
+        else if (!SkillInstallerService.IsWebSource(source))
         {
             var sourceDirectory = SkillInstallerService.SourceDirectory(source);
             if (!_hasSourceAccess(sourceDirectory) && folderAccess is not null)
@@ -70,12 +73,14 @@ internal sealed class SkillManagementTools(
         return JsonSerializer.Serialize(new
         {
             installed = true,
+            verified = result.Verified,
             result.Name,
             result.Description,
             scope = result.Scope,
             destination = result.Destination.Replace('\\', '/'),
             files = result.FileCount,
             bytes = result.TotalBytes,
+            source = result.Source,
             scriptsExecuted = false,
             available = "next Agent run"
         }, new JsonSerializerOptions { WriteIndented = true });

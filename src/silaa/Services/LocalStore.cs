@@ -63,6 +63,15 @@ public sealed class LocalStore
         return profile is not null && ApiCredentials.HasKey(profile.Id, profile.LlmEndpoint);
     }
 
+    public void SaveAutoUpdateEnabled(bool enabled)
+    {
+        lock (_settingsGate)
+        {
+            Settings.AutoUpdateEnabled = enabled;
+            Save("settings.json", Settings);
+        }
+    }
+
     public string? GetApiKey(string? connectionId = null)
     {
         var profile = connectionId is null ? ActiveConnection : GetConnection(connectionId);
