@@ -25,9 +25,31 @@ internal sealed partial class ReleaseUpdateService
 {
     private const string ReleasesApi = "https://api.github.com/repos/TRIPLESONG90/silaa/releases?per_page=20";
     private const long MaximumPackageBytes = 500L * 1024 * 1024;
+    private const string FailureMarkerFileName = "update-failed.txt";
     private readonly string _dataRoot;
 
     public ReleaseUpdateService(string dataRoot) => _dataRoot = Path.GetFullPath(dataRoot);
+
+    public string? ReadFailureMarker()
+    {
+        var path = Path.Combine(_dataRoot, FailureMarkerFileName);
+        try
+        {
+            if (!File.Exists(path)) return null;
+            var message = File.ReadAllText(path).Trim();
+            return message.Length == 0 ? "이전 자동 업데이트가 실패했습니다." : message[..Math.Min(message.Length, 500)];
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return "이전 자동 업데이트 실패 기록을 읽을 수 없습니다.";
+        }
+    }
+
+    public void ClearFailureMarker()
+    {
+        try { File.Delete(Path.Combine(_dataRoot, FailureMarkerFileName)); }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+    }
 
     public static string CurrentVersion
     {
@@ -125,8 +147,13 @@ internal sealed partial class ReleaseUpdateService
             $package = [IO.Path]::GetFullPath($env:SILAA_UPDATE_PACKAGE)
             $executable = [IO.Path]::GetFullPath($env:SILAA_UPDATE_EXECUTABLE)
             $log = [IO.Path]::GetFullPath($env:SILAA_UPDATE_LOG)
+            $failureMarker = [IO.Path]::GetFullPath($env:SILAA_UPDATE_FAILURE_MARKER)
             try {
               Wait-Process -Id ([int]$env:SILAA_UPDATE_PARENT) -ErrorAction SilentlyContinue
+              Get-CimInstance Win32_Process -Filter "Name = 'silaa.exe'" | Where-Object {
+                $_.ExecutablePath -and [IO.Path]::GetFullPath($_.ExecutablePath).Equals($executable, [StringComparison]::OrdinalIgnoreCase)
+              } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+              Start-Sleep -Milliseconds 400
               $stage = Join-Path $target ('.silaa-update-' + [Guid]::NewGuid().ToString('N'))
               New-Item -ItemType Directory -Path $stage | Out-Null
               Expand-Archive -LiteralPath $package -DestinationPath $stage -Force
@@ -143,9 +170,12 @@ internal sealed partial class ReleaseUpdateService
                 Copy-Item -LiteralPath $_.FullName -Destination $destination -Force
               }
               Remove-Item -LiteralPath $stage -Recurse -Force
+              if (Test-Path -LiteralPath $failureMarker) { Remove-Item -LiteralPath $failureMarker -Force }
               Start-Process -FilePath $executable -WorkingDirectory $target
             } catch {
-              Add-Content -LiteralPath $log -Value ('[' + [DateTimeOffset]::Now.ToString('O') + '] ' + $_.Exception.Message)
+              $failure = '[' + [DateTimeOffset]::Now.ToString('O') + '] ' + $_.Exception.Message
+              Add-Content -LiteralPath $log -Value $failure
+              Set-Content -LiteralPath $failureMarker -Value $failure -Encoding UTF8
               if (Test-Path -LiteralPath $executable) { Start-Process -FilePath $executable -WorkingDirectory $target }
             }
             """;
@@ -168,6 +198,7 @@ internal sealed partial class ReleaseUpdateService
         start.Environment["SILAA_UPDATE_EXECUTABLE"] = executable;
         start.Environment["SILAA_UPDATE_PARENT"] = Environment.ProcessId.ToString();
         start.Environment["SILAA_UPDATE_LOG"] = Path.Combine(_dataRoot, "update.log");
+        start.Environment["SILAA_UPDATE_FAILURE_MARKER"] = Path.Combine(_dataRoot, FailureMarkerFileName);
         return Process.Start(start) is not null;
     }
 

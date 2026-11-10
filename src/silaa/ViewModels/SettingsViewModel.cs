@@ -119,6 +119,7 @@ public partial class SettingsViewModel : ObservableObject
     {
         if (_suppressAutoUpdateSave) return;
         _store.SaveAutoUpdateEnabled(value);
+        if (value) new ReleaseUpdateService(_store.Root).ClearFailureMarker();
         UpdateStatus = value
             ? "다음 실행부터 GitHub Release를 확인하고 검증된 업데이트를 자동 설치합니다."
             : "자동 업데이트를 사용하지 않습니다.";

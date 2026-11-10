@@ -569,8 +569,30 @@ internal sealed class WorkspaceTools(
         {
             if (source[name] is string value && value.Length > 0) start.Environment[name] = value;
         }
+        start.Environment["PATH"] = EffectiveExecutablePath();
         start.Environment["SILAA_SECURITY_MODE"] = "enforce";
         start.Environment["GIT_TERMINAL_PROMPT"] = "0";
+    }
+
+    internal static string EffectiveExecutablePath()
+    {
+        var values = new List<string?> { Environment.GetEnvironmentVariable("PATH") };
+        if (OperatingSystem.IsWindows())
+        {
+            values.Add(Environment.GetEnvironmentVariable("Path", EnvironmentVariableTarget.Machine));
+            values.Add(Environment.GetEnvironmentVariable("Path", EnvironmentVariableTarget.User));
+        }
+        var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+        var directories = new HashSet<string>(comparer);
+        foreach (var value in values.Where(value => !string.IsNullOrWhiteSpace(value)))
+        {
+            foreach (var item in value!.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                var expanded = Environment.ExpandEnvironmentVariables(item.Trim('"'));
+                if (expanded.Length > 0) directories.Add(expanded);
+            }
+        }
+        return string.Join(Path.PathSeparator, directories);
     }
 
     private static Regex CreateGlobRegex(string pattern)

@@ -146,6 +146,15 @@ public sealed partial class SilaaApplication : Application
         try
         {
             var updater = new ReleaseUpdateService(_store.Root);
+            var previousFailure = updater.ReadFailureMarker();
+            if (previousFailure is not null)
+            {
+                if (_trayIcon is not null)
+                    WindowsNotification.Show(_trayIcon, "자동 업데이트 일시 중지",
+                        "이전 업데이트가 실패해 재실행 루프를 막았습니다. 설정에서 자동 업데이트를 다시 켜면 재시도합니다.", true);
+                CrashLog.Write("AutoUpdate-Paused", new InvalidOperationException(previousFailure));
+                return;
+            }
             var check = await updater.CheckAsync();
             if (check.Release is null) return;
             if (_trayIcon is not null)

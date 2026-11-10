@@ -642,6 +642,7 @@ public sealed class LlmHarness : IAsyncDisposable
             else
                 tools = workspaceTools!.CreateFunctions();
             foreach (var tool in new DateTimeTools().CreateFunctions()) tools.Add(tool);
+            foreach (var tool in new PythonEnvironmentTools().CreateFunctions()) tools.Add(tool);
             if (!setupMode)
             {
                 foreach (var tool in new UserInteractionTools(

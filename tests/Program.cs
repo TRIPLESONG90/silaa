@@ -1309,6 +1309,15 @@ catch (ArgumentException) { }
 
 if (OperatingSystem.IsWindows())
 {
+    using (var pythonProbe = JsonDocument.Parse(await new PythonEnvironmentTools().InspectAsync()))
+    {
+        Assert(pythonProbe.RootElement.TryGetProperty("detected", out _) &&
+               pythonProbe.RootElement.GetProperty("candidates").ValueKind == JsonValueKind.Array &&
+               pythonProbe.RootElement.GetProperty("effectivePath").GetString()?.Length > 0 &&
+               pythonProbe.RootElement.GetProperty("diagnosis").GetString()?.Length > 0,
+            "Python environment inspection reports where/PATH/registry probe evidence without guessing");
+    }
+
     var instanceKey = "test-" + Guid.NewGuid().ToString("N");
     using (var primaryInstance = new SingleInstanceCoordinator(instanceKey))
     using (var secondaryInstance = new SingleInstanceCoordinator(instanceKey))
@@ -1459,6 +1468,13 @@ if (OperatingSystem.IsWindows())
                !ReleaseUpdateService.IsNewerVersion("0.9.0", "0.9.0-preview.4") &&
                !ReleaseUpdateService.IsNewerVersion("0.9.0-preview.3", "0.9.0-preview.2"),
             "release updater orders preview and stable semantic versions safely");
+        var updateService = new ReleaseUpdateService(root);
+        File.WriteAllText(Path.Combine(root, "update-failed.txt"), "locked by an older process", Encoding.UTF8);
+        Assert(updateService.ReadFailureMarker()?.Contains("locked by an older process", StringComparison.Ordinal) == true,
+            "a failed update marker pauses automatic retries instead of creating a restart loop");
+        updateService.ClearFailureMarker();
+        Assert(updateService.ReadFailureMarker() is null,
+            "explicitly enabling updates can clear the failure pause before a controlled retry");
         themed.SaveAutoUpdateEnabled(false);
         Assert(themed.SetActiveReasoningEffort("low").ReasoningEffort == "low" &&
                new LocalStore(root).ActiveConnection?.ReasoningEffort == "low",
@@ -1969,8 +1985,9 @@ if (OperatingSystem.IsWindows())
                 "background and cron tools sent to Agent Framework");
             Assert(toolNames.Contains("create_reminder") && toolNames.Contains("glob_files") &&
                    toolNames.Contains("apply_edits") && toolNames.Contains("git_status") &&
-                   toolNames.Contains("list_allowed_directories"),
-                "local reminder, discovery, editing, Git, and access-boundary tools sent to Agent Framework");
+                   toolNames.Contains("list_allowed_directories") &&
+                   toolNames.Contains("inspect_python_environment"),
+                "local reminder, discovery, editing, Git, runtime inspection, and access-boundary tools sent to Agent Framework");
             Assert(toolNames.Contains("create_or_update_skill") && toolNames.Contains("validate_skill") &&
                    toolNames.Contains("list_local_skills"),
                 "project-local skill creator tools sent to Agent Framework");
