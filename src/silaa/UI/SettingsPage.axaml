@@ -187,30 +187,6 @@
             </StackPanel>
           </Border>
 
-          <Border Classes="form-card">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
-              <StackPanel Spacing="7">
-                <TextBlock Classes="section-title" Text="앱 업데이트" />
-                <TextBlock Classes="help"
-                           Text="GitHub Release의 Windows x64 패키지와 SHA-256을 확인해 검증된 새 버전만 설치합니다." />
-                <CheckBox IsChecked="{Binding AutoUpdateEnabled, Mode=TwoWay}"
-                          Content="silaa 실행 시 자동으로 확인하고 업데이트" />
-                <TextBlock Classes="help" Text="{Binding UpdateStatus}" />
-              </StackPanel>
-              <StackPanel Grid.Column="1" Spacing="7" HorizontalAlignment="Right">
-                <Border Padding="8,3" CornerRadius="10" Background="{DynamicResource SiRaisedBrush}">
-                  <TextBlock FontSize="9.5" Text="{Binding CurrentAppVersion, StringFormat='현재 {0}'}" />
-                </Border>
-                <Button Classes="secondary" Command="{Binding CheckForUpdatesCommand}"
-                        IsEnabled="{Binding !IsCheckingForUpdates}">
-                  <StackPanel Orientation="Horizontal" Spacing="7">
-                    <materialIcons:MaterialIcon Classes="ui-icon foreground" Width="14" Height="14" Kind="Update" />
-                    <TextBlock VerticalAlignment="Center" Text="지금 확인" />
-                  </StackPanel>
-                </Button>
-              </StackPanel>
-            </Grid>
-          </Border>
           </StackPanel>
 
           <StackPanel IsVisible="{Binding IsEditorOpen}" Spacing="18">

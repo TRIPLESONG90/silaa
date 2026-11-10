@@ -20,6 +20,7 @@
                        Text="약속, 행사, 마감처럼 실제 생활의 일정을 날짜순으로 확인합니다." />
           </StackPanel>
           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
+            <ComboBox MinWidth="130" ItemsSource="{Binding Views}" SelectedItem="{Binding SelectedView, Mode=TwoWay}" />
             <Border Padding="9,5" CornerRadius="12" Background="{DynamicResource SiRaisedBrush}">
               <TextBlock FontSize="10.5" Text="{Binding Summary}" />
             </Border>

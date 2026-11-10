@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:silaa.UI"
+             xmlns:vm="using:silaa.ViewModels"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="silaa.UI.ProjectOverviewPage" x:DataType="vm:ProjectOverviewViewModel"
+             Background="{DynamicResource SiBackgroundBrush}">
+  <UserControl.Styles>
+    <Style Selector="Button.primary"><Setter Property="Background" Value="{DynamicResource SiAccentBrush}" /><Setter Property="Foreground" Value="{DynamicResource SiOnAccentBrush}" /><Setter Property="BorderThickness" Value="0" /><Setter Property="CornerRadius" Value="8" /><Setter Property="Padding" Value="13,8" /><Setter Property="FontWeight" Value="SemiBold" /></Style>
+    <Style Selector="Button.secondary"><Setter Property="Background" Value="Transparent" /><Setter Property="Foreground" Value="{DynamicResource SiForegroundBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" /><Setter Property="BorderThickness" Value="1" /><Setter Property="CornerRadius" Value="7" /><Setter Property="Padding" Value="10,7" /></Style>
+    <Style Selector="Border.card"><Setter Property="Background" Value="{DynamicResource SiPanelBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" /><Setter Property="BorderThickness" Value="1" /><Setter Property="CornerRadius" Value="11" /><Setter Property="Padding" Value="17" /></Style>
+  </UserControl.Styles>
+  <Grid ColumnDefinitions="Auto,*">
+    <ui:MainMenuView DataContext="{Binding Navigation}" />
+    <Grid Grid.Column="1" RowDefinitions="Auto,*">
+      <Border Background="{DynamicResource SiGlassBrush}" BorderBrush="{DynamicResource SiGlassBorderBrush}" BorderThickness="0,0,0,1">
+        <Grid Margin="22,12" ColumnDefinitions="*,Auto" ColumnSpacing="16">
+          <StackPanel Spacing="2"><TextBlock FontSize="15" FontWeight="SemiBold" Text="프로젝트 개요" /><TextBlock FontSize="10.5" Foreground="{DynamicResource SiMutedBrush}" Text="대화, 자료, 기억과 산출물을 한곳에서 확인합니다" /></StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"><Button Classes="secondary" Command="{Binding RefreshCommand}" Content="새로고침" /><Button Classes="primary" Command="{Binding OpenConversationCommand}"><StackPanel Orientation="Horizontal" Spacing="7"><materialIcons:MaterialIcon Classes="ui-icon on-accent" Kind="MessageOutline" /><TextBlock Text="프로젝트 대화" /></StackPanel></Button></StackPanel>
+        </Grid>
+      </Border>
+      <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel MaxWidth="1050" Margin="32,28" Spacing="18" HorizontalAlignment="Stretch">
+          <Border Classes="card" Padding="22">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="24">
+              <StackPanel Spacing="10"><StackPanel Spacing="4"><TextBlock FontSize="24" FontWeight="SemiBold" Text="{Binding Name}" /><TextBlock FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}" Text="{Binding UpdatedAt}" /></StackPanel><TextBlock MaxWidth="760" FontSize="11.5" LineHeight="18" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Summary}" /><SelectableTextBlock FontSize="9.5" FontFamily="Cascadia Mono, Consolas, monospace" Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Directory}" /></StackPanel>
+              <StackPanel Grid.Column="1" Spacing="5" HorizontalAlignment="Right"><TextBlock HorizontalAlignment="Right" FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}" Text="구체화 지수" /><TextBlock HorizontalAlignment="Right" FontSize="28" FontWeight="SemiBold" Text="{Binding Specificity}" /><TextBlock HorizontalAlignment="Right" FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}" Text="{Binding DiscoveryLabel}" /></StackPanel>
+            </Grid>
+          </Border>
+          <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+            <Border Classes="card"><Grid ColumnDefinitions="Auto,*" ColumnSpacing="11"><materialIcons:MaterialIcon Classes="ui-icon foreground" Kind="MessageOutline" /><StackPanel Grid.Column="1" Spacing="3"><TextBlock FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}" Text="대화 세션" /><TextBlock FontSize="20" FontWeight="SemiBold" Text="{Binding SessionCount}" /></StackPanel></Grid></Border>
+            <Border Grid.Column="1" Classes="card"><Grid ColumnDefinitions="Auto,*" ColumnSpacing="11"><materialIcons:MaterialIcon Classes="ui-icon foreground" Kind="FileDocumentOutline" /><StackPanel Grid.Column="1" Spacing="3"><TextBlock FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}" Text="연결 자료" /><TextBlock FontSize="20" FontWeight="SemiBold" Text="{Binding ResourceCount}" /></StackPanel></Grid></Border>
+            <Border Grid.Column="2" Classes="card"><Grid ColumnDefinitions="Auto,*" ColumnSpacing="11"><materialIcons:MaterialIcon Classes="ui-icon foreground" Kind="BookOpenOutline" /><StackPanel Grid.Column="1" Spacing="3"><TextBlock FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}" Text="프로젝트 기억" /><TextBlock FontSize="20" FontWeight="SemiBold" Text="{Binding MemoryCount}" /></StackPanel></Grid></Border>
+          </Grid>
+          <Grid ColumnDefinitions="1.15*,0.85*" ColumnSpacing="12">
+            <StackPanel Spacing="10">
+              <Grid ColumnDefinitions="*,Auto"><StackPanel Spacing="3"><TextBlock FontSize="15" FontWeight="SemiBold" Text="최근 대화" /><TextBlock FontSize="10.5" Foreground="{DynamicResource SiMutedBrush}" Text="프로젝트 맥락을 유지한 세션입니다." /></StackPanel><Button Grid.Column="1" Classes="secondary" Command="{Binding OpenConversationCommand}" Content="새 대화" /></Grid>
+              <Border IsVisible="{Binding HasNoSessions}" Classes="card" Padding="24"><TextBlock HorizontalAlignment="Center" Foreground="{DynamicResource SiMutedBrush}" Text="아직 프로젝트 대화가 없습니다." /></Border>
+              <ItemsControl ItemsSource="{Binding RecentSessions}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="7" /></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:ProjectSessionItemViewModel"><Button Classes="secondary" HorizontalContentAlignment="Stretch" Command="{Binding OpenCommand}"><Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10"><TextBlock TextTrimming="CharacterEllipsis" Text="{Binding Title}" /><TextBlock Grid.Column="1" FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}" Text="{Binding UpdatedAt}" /><Border Grid.Column="2" Padding="7,2" CornerRadius="8" Background="{DynamicResource SiRaisedBrush}"><TextBlock FontSize="9" Text="{Binding State}" /></Border></Grid></Button></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="10">
+              <TextBlock FontSize="15" FontWeight="SemiBold" Text="프로젝트 도구" />
+              <Border Classes="card"><StackPanel Spacing="10"><Button Classes="secondary" HorizontalContentAlignment="Left" Command="{Binding OpenResourcesCommand}"><StackPanel Orientation="Horizontal" Spacing="9"><materialIcons:MaterialIcon Classes="ui-icon" Kind="FileDocumentOutline" /><TextBlock Text="파일·웹·코드 자료" /></StackPanel></Button><Button Classes="secondary" HorizontalContentAlignment="Left" Command="{Binding OpenMemoryCommand}"><StackPanel Orientation="Horizontal" Spacing="9"><materialIcons:MaterialIcon Classes="ui-icon" Kind="BookOpenOutline" /><TextBlock Text="프로젝트 기억" /></StackPanel></Button><Button IsVisible="{Binding HasApp}" Classes="primary" HorizontalContentAlignment="Left" Command="{Binding OpenAppCommand}"><StackPanel Orientation="Horizontal" Spacing="9"><materialIcons:MaterialIcon Classes="ui-icon on-accent" Kind="ApplicationBracesOutline" /><TextBlock Text="앱 열기" /></StackPanel></Button><Border Height="1" Background="{DynamicResource SiDividerBrush}" /><TextBlock FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}" Text="{Binding AppUrl}" /><TextBlock FontSize="9.5" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}" Text="{Binding DeliveryLabel}" /></StackPanel></Border>
+            </StackPanel>
+          </Grid>
+          <StackPanel IsVisible="{Binding HasDiscovery}" Spacing="10"><TextBlock FontSize="15" FontWeight="SemiBold" Text="구체화 히스토리" /><ItemsControl ItemsSource="{Binding Discovery}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="7" /></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:ProjectDiscoveryItemViewModel"><Border Classes="card" Padding="14"><Grid ColumnDefinitions="*,Auto" ColumnSpacing="14"><StackPanel Spacing="5"><TextBlock FontSize="11.5" FontWeight="SemiBold" TextWrapping="Wrap" Text="{Binding Question}" /><TextBlock FontSize="10.5" TextWrapping="Wrap" Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Answer}" /></StackPanel><TextBlock Grid.Column="1" FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Score}" /></Grid></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel>
+          <TextBlock HorizontalAlignment="Right" FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Status}" />
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+  </Grid>
+</UserControl>

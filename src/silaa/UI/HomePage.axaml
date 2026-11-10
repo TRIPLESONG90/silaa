@@ -234,6 +234,7 @@
 
           </StackPanel>
 
+          <StackPanel IsVisible="{Binding ShowProjectSection}" Spacing="12">
           <Grid Margin="0,8,0,0" ColumnDefinitions="*,Auto">
             <StackPanel Spacing="3">
               <TextBlock FontSize="14" FontWeight="SemiBold" Text="{Binding ProjectSectionTitle}" />
@@ -292,6 +293,7 @@
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
+          </StackPanel>
         </StackPanel>
       </ScrollViewer>
     </Grid>

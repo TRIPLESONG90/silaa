@@ -1,0 +1,67 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:silaa.UI"
+             xmlns:vm="using:silaa.ViewModels"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="silaa.UI.GeneralSettingsPage"
+             x:DataType="vm:GeneralSettingsViewModel"
+             Background="{DynamicResource SiBackgroundBrush}">
+  <UserControl.Styles>
+    <Style Selector="TextBlock.eyebrow"><Setter Property="FontSize" Value="9.5" /><Setter Property="FontWeight" Value="SemiBold" /><Setter Property="LetterSpacing" Value="1.2" /><Setter Property="Foreground" Value="{DynamicResource SiMutedBrush}" /></Style>
+    <Style Selector="TextBlock.label"><Setter Property="FontSize" Value="11.5" /><Setter Property="FontWeight" Value="SemiBold" /></Style>
+    <Style Selector="TextBlock.help"><Setter Property="FontSize" Value="10.5" /><Setter Property="LineHeight" Value="15" /><Setter Property="Foreground" Value="{DynamicResource SiMutedBrush}" /><Setter Property="TextWrapping" Value="Wrap" /></Style>
+    <Style Selector="Border.form-card"><Setter Property="Background" Value="{DynamicResource SiPanelBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" /><Setter Property="BorderThickness" Value="1" /><Setter Property="CornerRadius" Value="10" /><Setter Property="Padding" Value="18,16" /></Style>
+    <Style Selector="Button.primary"><Setter Property="Background" Value="{DynamicResource SiAccentBrush}" /><Setter Property="Foreground" Value="{DynamicResource SiOnAccentBrush}" /><Setter Property="BorderThickness" Value="0" /><Setter Property="CornerRadius" Value="8" /><Setter Property="Padding" Value="15,8" /><Setter Property="FontWeight" Value="SemiBold" /></Style>
+    <Style Selector="Button.secondary"><Setter Property="Background" Value="Transparent" /><Setter Property="Foreground" Value="{DynamicResource SiForegroundBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" /><Setter Property="BorderThickness" Value="1" /><Setter Property="CornerRadius" Value="7" /><Setter Property="Padding" Value="11,7" /></Style>
+  </UserControl.Styles>
+
+  <Grid ColumnDefinitions="Auto,*">
+    <ui:SettingsMenuView DataContext="{Binding Navigation}" />
+    <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
+      <Border Background="{DynamicResource SiGlassBrush}" BorderBrush="{DynamicResource SiGlassBorderBrush}" BorderThickness="0,0,0,1">
+        <Grid Margin="22,12" ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="2">
+            <TextBlock FontSize="15" FontWeight="SemiBold" Text="일반 설정" />
+            <TextBlock FontSize="10.5" Foreground="{DynamicResource SiMutedBrush}" Text="화면과 업데이트 동작을 관리합니다" />
+          </StackPanel>
+          <Button Grid.Column="1" Classes="secondary" Command="{Binding BackCommand}" AutomationProperties.Name="설정 닫기">
+            <StackPanel Orientation="Horizontal" Spacing="7"><materialIcons:MaterialIcon Classes="ui-icon foreground" Kind="ArrowLeft" /><TextBlock Text="돌아가기" /></StackPanel>
+          </Button>
+        </Grid>
+      </Border>
+
+      <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel MaxWidth="860" Margin="32,28" Spacing="18" HorizontalAlignment="Stretch">
+          <StackPanel Spacing="5"><TextBlock Classes="eyebrow" Text="APPEARANCE" /><TextBlock FontSize="21" FontWeight="SemiBold" Text="화면" /><TextBlock Classes="help" Text="콘텐츠 대비를 유지하는 블랙 &amp; 화이트 테마를 선택합니다." /></StackPanel>
+          <Border Classes="form-card">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+              <StackPanel Spacing="4"><TextBlock Classes="label" Text="화면 테마" /><TextBlock Classes="help" Text="테마 변경은 다음 실행부터 전체 화면에 적용됩니다." /></StackPanel>
+              <ComboBox Grid.Column="1" MinWidth="160" ItemsSource="{Binding Themes}" SelectedItem="{Binding SelectedTheme, Mode=TwoWay}" />
+            </Grid>
+          </Border>
+
+          <StackPanel Spacing="5" Margin="0,8,0,0"><TextBlock Classes="eyebrow" Text="UPDATES" /><TextBlock FontSize="21" FontWeight="SemiBold" Text="앱 업데이트" /><TextBlock Classes="help" Text="GitHub Release의 Windows 패키지와 SHA-256을 확인해 검증된 버전만 설치합니다." /></StackPanel>
+          <Border Classes="form-card">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+              <StackPanel Spacing="8">
+                <CheckBox IsChecked="{Binding AutoUpdateEnabled, Mode=TwoWay}" Content="silaa 실행 시 자동으로 확인하고 업데이트" />
+                <TextBlock Classes="help" Text="{Binding UpdateStatus}" />
+              </StackPanel>
+              <StackPanel Grid.Column="1" Spacing="8" HorizontalAlignment="Right">
+                <Border Padding="8,3" CornerRadius="10" Background="{DynamicResource SiRaisedBrush}"><TextBlock FontSize="9.5" Text="{Binding CurrentAppVersion, StringFormat='현재 {0}'}" /></Border>
+                <Button Classes="secondary" Command="{Binding CheckForUpdatesCommand}" IsEnabled="{Binding !IsCheckingForUpdates}" Content="지금 확인" />
+              </StackPanel>
+            </Grid>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+
+      <Border Grid.Row="2" Padding="16,11" Background="{DynamicResource SiGlassBrush}" BorderBrush="{DynamicResource SiGlassBorderBrush}" BorderThickness="0,1,0,0">
+        <Grid MaxWidth="860" HorizontalAlignment="Stretch" ColumnDefinitions="*,Auto">
+          <TextBlock VerticalAlignment="Center" FontSize="10.75" Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Status}" />
+          <Button Grid.Column="1" Classes="primary" MinWidth="116" Command="{Binding SaveCommand}" Content="설정 저장" />
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

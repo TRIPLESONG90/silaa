@@ -267,8 +267,15 @@ if (args.Contains("--xaml-smoke", StringComparer.OrdinalIgnoreCase))
         var workspaceSettings = new silaa.UI.WorkspaceSettingsPage(store);
         var home = new silaa.UI.HomePage();
         var window = new silaa.UI.MainWindow(store, harness);
+        var generalSettingsOpened = 0;
         var navigation = new silaa.ViewModels.NavigationViewModel(
-            () => Task.CompletedTask, () => Task.CompletedTask, () => { }, () => { }, () => { }, () => { }, () => { });
+            () => Task.CompletedTask, () => Task.CompletedTask, () => { }, () => { }, () => { }, () => { }, () => { },
+            openGeneralSettings: () => generalSettingsOpened++);
+        navigation.OpenGeneralSettingsCommand.Execute(null);
+        Assert(generalSettingsOpened == 1, "general settings has an independent navigation command");
+        var generalSettings = new silaa.UI.GeneralSettingsPage(store, navigation);
+        Assert(generalSettings.GetLogicalDescendants().OfType<TextBlock>().Any(text => text.Text == "일반 설정"),
+            "appearance and update preferences load in the dedicated general settings page");
         var menu = new silaa.UI.MainMenuView { DataContext = navigation };
         menu.Measure(new Size(232, 800));
         menu.Arrange(new Rect(0, 0, 232, 800));
@@ -294,9 +301,10 @@ if (args.Contains("--xaml-smoke", StringComparer.OrdinalIgnoreCase))
         settingsMenu.Measure(new Size(232, 800));
         settingsMenu.Arrange(new Rect(0, 0, 232, 800));
         Assert(settingsMenu.GetLogicalDescendants().OfType<Button>()
-                   .Count(button => button.Classes.Contains("settings-nav")) == 5 &&
+                   .Count(button => button.Classes.Contains("settings-nav")) == 6 &&
+               settingsMenu.GetLogicalDescendants().OfType<TextBlock>().Any(text => text.Text == "일반") &&
                !settingsMenu.GetLogicalDescendants().OfType<TextBlock>().Any(text => text.Text == "기억"),
-            "settings sidebar owns LLM, folder, security, Vault, and main-menu navigation without Memory");
+            "settings sidebar owns general, LLM, folder, security, Vault, and main-menu navigation without Memory");
         Assert(home.FindControl<TextBox>("QuickPromptBox") is not null &&
                home.GetLogicalDescendants().OfType<Button>().Count(button => button.Classes.Contains("launch-card")) == 3,
             "home exposes Enter-ready input and exactly three primary start paths");
@@ -333,6 +341,14 @@ if (args.Contains("--xaml-smoke", StringComparer.OrdinalIgnoreCase))
         presentationViewModel.ApplyEditorCommand.Execute(null);
         Assert(presentationViewModel.IsCatalog && documentTemplateStore.Resolve("pptx", "default").Name == "AI Mono Report",
             "applying an edited preview saves a custom copy as the format default");
+        var customTemplate = documentTemplateStore.Resolve("pptx", "default");
+        var duplicatedTemplate = documentTemplateStore.Duplicate("pptx", customTemplate.Id);
+        Assert(duplicatedTemplate.Name.EndsWith("복사본", StringComparison.Ordinal) &&
+               documentTemplateStore.DefaultId("pptx") == duplicatedTemplate.Id,
+            "custom and built-in document designs can be duplicated into a managed custom template");
+        Assert(documentTemplateStore.Remove("pptx", duplicatedTemplate.Id) &&
+               documentTemplateStore.DefaultId("pptx") == "silaa-mono",
+            "deleting the active custom template safely restores the built-in default");
         presentationViewModel.AddTemplateCommand.Execute(null);
         Assert(presentationViewModel.IsConversation && presentationViewModel.Messages.Count == 1 &&
                presentationViewModel.Messages.All(message => message.IsAssistant),
@@ -427,6 +443,30 @@ if (args.Contains("--xaml-smoke", StringComparer.OrdinalIgnoreCase))
         openAppConnections.Invoke(window, null);
         Assert(navigationPageHost.Children.SingleOrDefault() is silaa.UI.AppConnectionsPage,
             "the related MainWindow app-connections navigation path also attaches without crashing");
+        var appsPage = new silaa.UI.AppsPage
+        {
+            DataContext = new silaa.ViewModels.AppsViewModel(
+                harness, navigation, () => Task.CompletedTask, () => { }, _ => Task.CompletedTask,
+                _ => { }, _ => Task.CompletedTask)
+        };
+        Assert(appsPage.GetLogicalDescendants().OfType<TextBlock>().Any(text => text.Text == "등록된 앱") &&
+               appsPage.GetLogicalDescendants().OfType<TextBlock>().Any(text => text.Text == "실행 중"),
+            "apps has a dedicated status-management page instead of reusing the project catalog");
+        var overviewProject = new ProjectInfo
+        {
+            Id = "overview-test", Name = "프로젝트 개요 테스트", Directory = xamlRoot,
+            Summary = "프로젝트 맥락과 최근 대화를 확인합니다.", SpecificityScore = 82,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+        var projectOverview = new silaa.UI.ProjectOverviewPage
+        {
+            DataContext = new silaa.ViewModels.ProjectOverviewViewModel(
+                harness, navigation, overviewProject, _ => Task.CompletedTask, _ => Task.CompletedTask,
+                _ => Task.CompletedTask, _ => Task.CompletedTask, _ => { })
+        };
+        Assert(projectOverview.GetLogicalDescendants().OfType<TextBlock>().Any(text => text.Text == "프로젝트 개요") &&
+               projectOverview.GetLogicalDescendants().OfType<TextBlock>().Any(text => text.Text == "대화 세션"),
+            "projects open a real overview with context metrics before entering chat");
         var skills = new silaa.UI.SkillsPage { DataContext = new silaa.ViewModels.SkillsViewModel(store, navigation) };
         var vault = new silaa.UI.VaultPage
         {
@@ -586,25 +626,34 @@ if (args.Contains("--layout-snapshots", StringComparer.OrdinalIgnoreCase))
         var homeViewModel = new silaa.ViewModels.HomePageViewModel(
             harness, Navigation(silaa.ViewModels.NavigationSection.Home), _ => Task.CompletedTask, () => Task.CompletedTask, _ => Task.CompletedTask,
             () => Task.CompletedTask, () => { }, () => { }, () => { }, () => { }, () => { });
-        homeViewModel.Apps.Add(new silaa.ViewModels.ProjectCardViewModel(new ProjectInfo
+        var snapshotAppProject = new ProjectInfo
         {
             Id = "snapshot-app", Name = "업무 대시보드", Directory = dataRoot,
             Summary = "팀 업무를 한눈에 확인하는 내부 앱",
+            SpecificityScore = 86,
             UpdatedAt = DateTimeOffset.UtcNow,
             Delivery = new ProjectDeliveryProfile
             {
                 Kind = "webapp", SkillName = "web-app-delivery", AppPort = 5100, InternalPort = 3000
             }
-        }, _ => Task.CompletedTask));
+        };
+        homeViewModel.Apps.Add(new silaa.ViewModels.ProjectCardViewModel(snapshotAppProject, _ => Task.CompletedTask));
         homeViewModel.HasApps = true;
         var home = new silaa.UI.HomePage { DataContext = homeViewModel };
-        var appsViewModel = new silaa.ViewModels.HomePageViewModel(
-            harness, Navigation(silaa.ViewModels.NavigationSection.Apps), _ => Task.CompletedTask, () => Task.CompletedTask, _ => Task.CompletedTask,
-            () => Task.CompletedTask, () => { }, () => { }, () => { }, () => { }, () => { }, appsOnly: true);
-        appsViewModel.Projects.Add(homeViewModel.Apps[0]);
-        appsViewModel.HasProjects = true;
-        appsViewModel.IsEmpty = false;
-        var apps = new silaa.UI.HomePage { DataContext = appsViewModel };
+        var appsViewModel = new silaa.ViewModels.AppsViewModel(
+            harness, Navigation(silaa.ViewModels.NavigationSection.Apps), () => Task.CompletedTask, () => { },
+            _ => Task.CompletedTask, _ => { }, _ => Task.CompletedTask);
+        appsViewModel.Apps.Add(new silaa.ViewModels.AppCardViewModel(
+            snapshotAppProject, _ => Task.CompletedTask, _ => { }, _ => Task.CompletedTask));
+        appsViewModel.HasNoApps = false;
+        var apps = new silaa.UI.AppsPage { DataContext = appsViewModel };
+        var projectOverview = new silaa.UI.ProjectOverviewPage
+        {
+            DataContext = new silaa.ViewModels.ProjectOverviewViewModel(
+                harness, Navigation(silaa.ViewModels.NavigationSection.Projects), snapshotAppProject,
+                _ => Task.CompletedTask, _ => Task.CompletedTask, _ => Task.CompletedTask,
+                _ => Task.CompletedTask, _ => { })
+        };
         var memory = new silaa.UI.MemoryPage
         {
             DataContext = new silaa.ViewModels.MemoryViewModel(
@@ -645,6 +694,8 @@ if (args.Contains("--layout-snapshots", StringComparer.OrdinalIgnoreCase))
         };
         var settings = new silaa.UI.SettingsPage(store, harness, Navigation(silaa.ViewModels.NavigationSection.Settings));
         var settingsEditor = new silaa.UI.SettingsPage(store, harness, Navigation(silaa.ViewModels.NavigationSection.Settings));
+        var generalSettings = new silaa.UI.GeneralSettingsPage(
+            store, Navigation(silaa.ViewModels.NavigationSection.GeneralSettings));
         ((silaa.ViewModels.SettingsViewModel)settingsEditor.DataContext!).NewConnectionCommand.Execute(null);
         var browser = new silaa.UI.BrowserPage(
             Navigation(silaa.ViewModels.NavigationSection.Browser), null, () => { }, (_, _) => { }, true);
@@ -662,6 +713,7 @@ if (args.Contains("--layout-snapshots", StringComparer.OrdinalIgnoreCase))
         {
             ("01-home.png", home),
             ("01b-apps.png", apps),
+            ("01c-project-overview.png", projectOverview),
             ("02-chat.png", chat),
             ("03-memory.png", memory),
             ("04-vault.png", vault),
@@ -672,7 +724,8 @@ if (args.Contains("--layout-snapshots", StringComparer.OrdinalIgnoreCase))
             ("06b-presentation-templates.png", presentationCatalog),
             ("07-browser.png", browser),
             ("08-settings.png", settings),
-            ("09-settings-editor.png", settingsEditor)
+            ("09-settings-editor.png", settingsEditor),
+            ("10-general-settings.png", generalSettings)
         };
         foreach (var (name, view) in snapshots)
         {
@@ -1207,6 +1260,31 @@ timelineView.AppendAnswer("done");
 timelineView.Complete();
 Assert(string.Join(',', timelineView.TimelineKinds) == "reasoning,tool,reasoning,tool,tool,answer",
     "agent activity preserves chronological timeline");
+Assert(timelineView.Root.GetLogicalDescendants().OfType<Button>()
+           .Count(button => Avalonia.Automation.AutomationProperties.GetName(button) == "추론 복사") == 2 &&
+       timelineView.Root.GetLogicalDescendants().OfType<Button>()
+           .Count(button => Avalonia.Automation.AutomationProperties.GetName(button) == "도구 호출 복사") == 3,
+    "every reasoning phase and tool activity exposes its own copy action");
+
+var cumulativeReasoning = new silaa.UI.AgentRunView();
+cumulativeReasoning.AppendReasoning("환경을 확인합니다.");
+cumulativeReasoning.AppendReasoning("환경을 확인합니다. Python 경로를 조사합니다.");
+cumulativeReasoning.Complete();
+Assert(cumulativeReasoning.Root.GetLogicalDescendants().OfType<SelectableTextBlock>()
+           .Any(block => block.Text == "환경을 확인합니다. Python 경로를 조사합니다."),
+    "providers that replay cumulative reasoning are rendered once instead of looking like an infinite loop");
+
+var progressGuard = new AgentProgressGuard();
+var repeatedToolLoopDetected = false;
+for (var index = 0; index < AgentProgressGuard.RepeatedIdenticalToolCallLimit; index++)
+    repeatedToolLoopDetected = progressGuard.ObserveToolCall(
+        $"repeat-{index}", "inspect_python_environment", new Dictionary<string, object?>());
+Assert(repeatedToolLoopDetected,
+    "five consecutive identical tool calls are treated as an unmistakable loop");
+var variedProgressGuard = new AgentProgressGuard();
+Assert(!Enumerable.Range(0, 20).Any(index => variedProgressGuard.ObserveToolCall(
+        $"varied-{index}", "read_file", new Dictionary<string, object?> { ["path"] = $"file-{index}.txt" })),
+    "long runs with varied tool arguments remain unrestricted");
 
 var interleavedTimeline = new silaa.UI.AgentRunView();
 interleavedTimeline.AppendAnswer("before tool");

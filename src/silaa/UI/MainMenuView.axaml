@@ -43,7 +43,7 @@
           BorderBrush="{DynamicResource SiDividerBrush}"
           BorderThickness="0,0,1,0">
     <Grid RowDefinitions="Auto,*,Auto">
-      <Grid Margin="16,18,14,14" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
+      <Grid Margin="16,18,14,14" ColumnDefinitions="Auto,*" ColumnSpacing="9">
         <Border Width="28" Height="28" CornerRadius="8"
                 Background="{DynamicResource SiAccentBrush}">
           <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -54,7 +54,6 @@
           <TextBlock FontSize="14" FontWeight="SemiBold" Text="silaa" />
           <TextBlock FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}" Text="AGENT WORKSPACE" />
         </StackPanel>
-        <materialIcons:MaterialIcon Grid.Column="2" Classes="ui-icon" Width="15" Height="15" Kind="ChevronDown" />
       </Grid>
 
       <Grid Grid.Row="1" RowDefinitions="Auto,*,Auto" Margin="10,0">
@@ -62,49 +61,49 @@
           <TextBlock Margin="9,2,0,7" FontSize="9.5" FontWeight="SemiBold"
                      LetterSpacing="1.1" Foreground="{DynamicResource SiMutedBrush}"
                      Text="WORKSPACE" />
-          <Button Classes="nav-item" Classes.selected="{Binding IsHome}" Command="{Binding OpenHomeCommand}">
+          <Button Classes="nav-item" Classes.selected="{Binding IsHome}" Command="{Binding OpenHomeCommand}" AutomationProperties.Name="홈">
             <StackPanel Orientation="Horizontal" Spacing="10">
               <materialIcons:MaterialIcon Classes="ui-icon" Kind="ViewDashboardOutline" />
               <TextBlock VerticalAlignment="Center" Text="홈" />
             </StackPanel>
           </Button>
-          <Button Classes="nav-item" Command="{Binding BeginConversationCommand}">
+          <Button Classes="nav-item" Command="{Binding BeginConversationCommand}" AutomationProperties.Name="대화">
             <StackPanel Orientation="Horizontal" Spacing="10">
               <materialIcons:MaterialIcon Classes="ui-icon" Kind="MessageOutline" />
               <TextBlock VerticalAlignment="Center" Text="대화" />
             </StackPanel>
           </Button>
-          <Button Classes="nav-item" Classes.selected="{Binding IsProjects}" Command="{Binding OpenProjectsCommand}">
+          <Button Classes="nav-item" Classes.selected="{Binding IsProjects}" Command="{Binding OpenProjectsCommand}" AutomationProperties.Name="프로젝트">
             <StackPanel Orientation="Horizontal" Spacing="10">
               <materialIcons:MaterialIcon Classes="ui-icon" Kind="FolderOutline" />
               <TextBlock VerticalAlignment="Center" Text="프로젝트" />
             </StackPanel>
           </Button>
-          <Button Classes="nav-item" Classes.selected="{Binding IsAutomation}" Command="{Binding OpenAutomationCommand}">
+          <Button Classes="nav-item" Classes.selected="{Binding IsAutomation}" Command="{Binding OpenAutomationCommand}" AutomationProperties.Name="예약 작업">
             <StackPanel Orientation="Horizontal" Spacing="10">
               <materialIcons:MaterialIcon Classes="ui-icon" Kind="CalendarClockOutline" />
               <TextBlock VerticalAlignment="Center" Text="예약 작업" />
             </StackPanel>
           </Button>
-          <Button Classes="nav-item" Classes.selected="{Binding IsSchedule}" Command="{Binding OpenScheduleCommand}">
+          <Button Classes="nav-item" Classes.selected="{Binding IsSchedule}" Command="{Binding OpenScheduleCommand}" AutomationProperties.Name="내 일정">
             <StackPanel Orientation="Horizontal" Spacing="10">
               <materialIcons:MaterialIcon Classes="ui-icon" Kind="CalendarMonthOutline" />
               <TextBlock VerticalAlignment="Center" Text="내 일정" />
             </StackPanel>
           </Button>
-          <Button Classes="nav-item" Classes.selected="{Binding IsApps}" Command="{Binding OpenAppsCommand}">
+          <Button Classes="nav-item" Classes.selected="{Binding IsApps}" Command="{Binding OpenAppsCommand}" AutomationProperties.Name="앱">
             <StackPanel Orientation="Horizontal" Spacing="10">
               <materialIcons:MaterialIcon Classes="ui-icon" Kind="ApplicationBracesOutline" />
               <TextBlock VerticalAlignment="Center" Text="앱" />
             </StackPanel>
           </Button>
-          <Button Classes="nav-item" Classes.selected="{Binding IsMemory}" Command="{Binding OpenMemoryCommand}">
+          <Button Classes="nav-item" Classes.selected="{Binding IsMemory}" Command="{Binding OpenMemoryCommand}" AutomationProperties.Name="기억">
             <StackPanel Orientation="Horizontal" Spacing="10">
               <materialIcons:MaterialIcon Classes="ui-icon" Kind="BookOpenOutline" />
               <TextBlock VerticalAlignment="Center" Text="기억" />
             </StackPanel>
           </Button>
-          <Button Classes="nav-item" Classes.selected="{Binding IsPresentationTemplates}" Command="{Binding OpenPresentationTemplatesCommand}">
+          <Button Classes="nav-item" Classes.selected="{Binding IsPresentationTemplates}" Command="{Binding OpenPresentationTemplatesCommand}" AutomationProperties.Name="문서 템플릿">
             <StackPanel Orientation="Horizontal" Spacing="10">
               <materialIcons:MaterialIcon Classes="ui-icon" Kind="FileDocumentOutline" />
               <TextBlock VerticalAlignment="Center" Text="문서 템플릿" />
@@ -116,13 +115,13 @@
           <TextBlock Margin="9,2,0,7" FontSize="9.5" FontWeight="SemiBold"
                      LetterSpacing="1.1" Foreground="{DynamicResource SiMutedBrush}"
                      Text="SETTINGS" />
-          <Button Classes="nav-item" Classes.selected="{Binding IsSettings}" Command="{Binding OpenSettingsCommand}">
+          <Button Classes="nav-item" Classes.selected="{Binding IsGeneralSettings}" Command="{Binding OpenGeneralSettingsCommand}" AutomationProperties.Name="설정">
             <StackPanel Orientation="Horizontal" Spacing="10">
               <materialIcons:MaterialIcon Classes="ui-icon" Kind="TuneVariant" />
               <TextBlock VerticalAlignment="Center" Text="설정" />
             </StackPanel>
           </Button>
-          <Button Classes="nav-item" Command="{Binding OpenUsageGuideCommand}">
+          <Button Classes="nav-item" Command="{Binding OpenUsageGuideCommand}" AutomationProperties.Name="사용법 물어보기">
             <StackPanel Orientation="Horizontal" Spacing="10">
               <materialIcons:MaterialIcon Classes="ui-icon" Kind="HelpCircleOutline" />
               <TextBlock VerticalAlignment="Center" Text="사용법 물어보기" />

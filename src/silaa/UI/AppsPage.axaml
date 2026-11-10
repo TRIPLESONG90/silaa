@@ -1,0 +1,62 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="using:silaa.UI"
+             xmlns:vm="using:silaa.ViewModels"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="silaa.UI.AppsPage" x:DataType="vm:AppsViewModel"
+             Background="{DynamicResource SiBackgroundBrush}">
+  <UserControl.Styles>
+    <Style Selector="Button.primary"><Setter Property="Background" Value="{DynamicResource SiAccentBrush}" /><Setter Property="Foreground" Value="{DynamicResource SiOnAccentBrush}" /><Setter Property="BorderThickness" Value="0" /><Setter Property="CornerRadius" Value="8" /><Setter Property="Padding" Value="13,8" /><Setter Property="FontWeight" Value="SemiBold" /></Style>
+    <Style Selector="Button.secondary"><Setter Property="Background" Value="Transparent" /><Setter Property="Foreground" Value="{DynamicResource SiForegroundBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" /><Setter Property="BorderThickness" Value="1" /><Setter Property="CornerRadius" Value="7" /><Setter Property="Padding" Value="10,7" /></Style>
+    <Style Selector="Border.metric"><Setter Property="Background" Value="{DynamicResource SiPanelBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" /><Setter Property="BorderThickness" Value="1" /><Setter Property="CornerRadius" Value="10" /><Setter Property="Padding" Value="15,12" /></Style>
+    <Style Selector="Border.app-card"><Setter Property="Width" Value="430" /><Setter Property="MinHeight" Value="250" /><Setter Property="Background" Value="{DynamicResource SiPanelBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource SiDividerBrush}" /><Setter Property="BorderThickness" Value="1" /><Setter Property="CornerRadius" Value="12" /><Setter Property="Padding" Value="17" /><Setter Property="Margin" Value="0,0,12,12" /></Style>
+  </UserControl.Styles>
+  <Grid ColumnDefinitions="Auto,*">
+    <ui:MainMenuView DataContext="{Binding Navigation}" />
+    <Grid Grid.Column="1" RowDefinitions="Auto,*">
+      <Border Background="{DynamicResource SiGlassBrush}" BorderBrush="{DynamicResource SiGlassBorderBrush}" BorderThickness="0,0,0,1">
+        <Grid Margin="22,12" ColumnDefinitions="*,Auto" ColumnSpacing="16">
+          <StackPanel Spacing="2"><TextBlock FontSize="15" FontWeight="SemiBold" Text="앱" /><TextBlock FontSize="10.5" Foreground="{DynamicResource SiMutedBrush}" Text="프로젝트에서 만든 앱의 주소와 실행 상태를 관리합니다" /></StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+            <Button Classes="secondary" Command="{Binding OpenConnectionsCommand}" Content="앱 연결" />
+            <Button Classes="secondary" Command="{Binding RefreshCommand}" Content="상태 새로고침" />
+            <Button Classes="primary" Command="{Binding CreateAppCommand}"><StackPanel Orientation="Horizontal" Spacing="7"><materialIcons:MaterialIcon Classes="ui-icon on-accent" Kind="Plus" /><TextBlock Text="새 앱" /></StackPanel></Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+      <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel MaxWidth="1100" Margin="32,28" Spacing="20" HorizontalAlignment="Stretch">
+          <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+            <Border Classes="metric"><StackPanel Spacing="4"><TextBlock FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}" Text="등록된 앱" /><TextBlock FontSize="20" FontWeight="SemiBold" Text="{Binding AppCountLabel}" /></StackPanel></Border>
+            <Border Grid.Column="1" Classes="metric"><StackPanel Spacing="4"><TextBlock FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}" Text="실행 중" /><TextBlock FontSize="20" FontWeight="SemiBold" Text="{Binding OnlineCountLabel}" /></StackPanel></Border>
+            <Border Grid.Column="2" Classes="metric"><StackPanel Spacing="4"><TextBlock FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}" Text="확인 필요" /><TextBlock FontSize="20" FontWeight="SemiBold" Text="{Binding OfflineCountLabel}" /></StackPanel></Border>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto"><StackPanel Spacing="3"><TextBlock FontSize="18" FontWeight="SemiBold" Text="내 앱" /><TextBlock FontSize="10.5" Foreground="{DynamicResource SiMutedBrush}" Text="실행 여부를 확인하고 내장 브라우저로 바로 엽니다." /></StackPanel><TextBlock Grid.Column="1" VerticalAlignment="Bottom" FontSize="10.5" Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Status}" /></Grid>
+          <Border IsVisible="{Binding HasNoApps}" Padding="38" CornerRadius="13" Background="{DynamicResource SiPanelBrush}" BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="1">
+            <StackPanel HorizontalAlignment="Center" Spacing="8"><materialIcons:MaterialIcon Classes="ui-icon" Width="26" Height="26" HorizontalAlignment="Center" Kind="ApplicationBracesOutline" /><TextBlock HorizontalAlignment="Center" FontSize="14" FontWeight="SemiBold" Text="아직 관리할 앱이 없습니다" /><TextBlock MaxWidth="520" TextAlignment="Center" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource SiMutedBrush}" Text="새 앱을 누르면 Agent가 목적과 기능을 구체화한 뒤 앱 프로젝트를 만듭니다." /><Button Classes="primary" HorizontalAlignment="Center" Command="{Binding CreateAppCommand}" Content="새 앱 시작" /></StackPanel>
+          </Border>
+          <ItemsControl ItemsSource="{Binding Apps}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:AppCardViewModel">
+                <Border Classes="app-card">
+                  <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="12">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="11">
+                      <Border Width="38" Height="38" CornerRadius="10" Background="{DynamicResource SiRaisedBrush}"><materialIcons:MaterialIcon Classes="ui-icon foreground" Width="18" Height="18" HorizontalAlignment="Center" Kind="ApplicationBracesOutline" /></Border>
+                      <StackPanel Grid.Column="1" Spacing="3"><TextBlock FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Text="{Binding Name}" /><TextBlock FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Skill}" /></StackPanel>
+                      <Border Grid.Column="2" Padding="8,3" CornerRadius="10" Background="{Binding StatusBackground}"><TextBlock FontSize="9.5" FontWeight="SemiBold" Text="{Binding StatusText}" /></Border>
+                    </Grid>
+                    <TextBlock Grid.Row="1" MaxHeight="42" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" FontSize="10.75" Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Summary}" />
+                    <Border Grid.Row="2" Padding="11,9" CornerRadius="8" Background="{DynamicResource SiRaisedBrush}"><Grid ColumnDefinitions="*,Auto"><StackPanel Spacing="3"><SelectableTextBlock FontFamily="Cascadia Mono, Consolas, monospace" FontSize="10.5" Text="{Binding LocalUrl}" /><TextBlock FontSize="9.5" Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Ports}" /></StackPanel><Button Grid.Column="1" Classes="secondary" Command="{Binding CopyUrlCommand}" Content="복사" /></Grid></Border>
+                    <StackPanel Grid.Row="3" Spacing="3"><TextBlock FontSize="10.5" Text="{Binding StatusDetail}" /><TextBlock FontSize="9.5" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource SiMutedBrush}" Text="{Binding Directory}" /></StackPanel>
+                    <Grid Grid.Row="4" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="7"><Button Classes="secondary" Command="{Binding CheckHealthCommand}" Content="상태 확인" /><TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="9" Foreground="{DynamicResource SiMutedBrush}" Text="{Binding UpdatedAt}" /><Button Grid.Column="2" Classes="secondary" Command="{Binding OpenProjectCommand}" Content="프로젝트" /><Button Grid.Column="3" Classes="primary" Command="{Binding OpenBrowserCommand}" Content="앱 열기" /></Grid>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+  </Grid>
+</UserControl>

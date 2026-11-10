@@ -12,18 +12,21 @@ public partial class PresentationTemplatesViewModel : ObservableObject
     private readonly DocumentTemplateStore _store;
     private readonly Func<string, Task<DocumentDesignTemplate>> _generateTemplate;
     private readonly Func<Task<string?>>? _pickTemplateFile;
+    private readonly Func<string, string, Task<bool>> _confirm;
     private DocumentDesignTemplate? _editingTemplate;
 
     public PresentationTemplatesViewModel(
         NavigationViewModel navigation,
         DocumentTemplateStore store,
         Func<string, Task<DocumentDesignTemplate>> generateTemplate,
-        Func<Task<string?>>? pickTemplateFile = null)
+        Func<Task<string?>>? pickTemplateFile = null,
+        Func<string, string, Task<bool>>? confirm = null)
     {
         Navigation = navigation;
         _store = store;
         _generateTemplate = generateTemplate;
         _pickTemplateFile = pickTemplateFile;
+        _confirm = confirm ?? ((_, _) => Task.FromResult(true));
         ShowCatalog();
     }
 
@@ -51,6 +54,7 @@ public partial class PresentationTemplatesViewModel : ObservableObject
     public bool CanCompose => IsConversation && !IsBusy;
     public bool HasChoices => Choices.Count > 0 && CanCompose;
     public bool CanEdit => IsEditor && !IsEditorBusy;
+    public bool CanDeleteEditingTemplate => CanEdit && _editingTemplate is { IsBuiltIn: false };
     public string EditingTitle => _editingTemplate?.Name ?? "";
     public string EditingDescription => _editingTemplate?.Description ?? "";
     public string EditingFormat => _editingTemplate is null ? "" : FormatLabel(_editingTemplate.Format).ToUpperInvariant();
@@ -78,7 +82,11 @@ public partial class PresentationTemplatesViewModel : ObservableObject
         OnPropertyChanged(nameof(CanEdit));
     }
 
-    partial void OnIsEditorBusyChanged(bool value) => OnPropertyChanged(nameof(CanEdit));
+    partial void OnIsEditorBusyChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanEdit));
+        OnPropertyChanged(nameof(CanDeleteEditingTemplate));
+    }
 
     partial void OnIsBusyChanged(bool value)
     {
@@ -237,6 +245,22 @@ public partial class PresentationTemplatesViewModel : ObservableObject
         ShowCatalog($"‘{saved.Name}’ 수정본을 저장하고 {FormatLabel(saved.Format)} 기본 템플릿으로 적용했습니다.");
     }
 
+    [RelayCommand]
+    private void DuplicateEditor()
+    {
+        if (_editingTemplate is null || IsEditorBusy) return;
+        var saved = _store.Duplicate(_editingTemplate.Format, _editingTemplate.Id);
+        ShowCatalog($"‘{saved.Name}’을 복제하고 기본 템플릿으로 설정했습니다.");
+    }
+
+    [RelayCommand]
+    private async Task DeleteEditorAsync()
+    {
+        if (_editingTemplate is not { IsBuiltIn: false } template || IsEditorBusy) return;
+        if (!await _confirm("템플릿 삭제", $"‘{template.Name}’ 템플릿을 삭제할까요?")) return;
+        if (_store.Remove(template.Format, template.Id)) ShowCatalog($"‘{template.Name}’ 템플릿을 삭제했습니다.");
+    }
+
     private void ShowCatalog(string message)
     {
         IsEditor = false;
@@ -277,6 +301,7 @@ public partial class PresentationTemplatesViewModel : ObservableObject
         OnPropertyChanged(nameof(EditingBodyColor));
         OnPropertyChanged(nameof(EditingAccentColor));
         OnPropertyChanged(nameof(EditingMutedColor));
+        OnPropertyChanged(nameof(CanDeleteEditingTemplate));
     }
 
     private static string FormatLabel(string format) => format switch

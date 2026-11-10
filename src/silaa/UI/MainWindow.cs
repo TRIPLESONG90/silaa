@@ -53,9 +53,10 @@ public sealed partial class MainWindow : Window
     private readonly Button _copyConversationButton = null!;
     private readonly HomePage _home = null!;
     private readonly HomePage _projectsPage = null!;
-    private readonly HomePage _appsPage = null!;
+    private readonly AppsPage _appsPage = null!;
     private Control? _pageBeforeSettings;
     private SettingsPage? _settingsPage;
+    private GeneralSettingsPage? _generalSettingsPage;
     private WorkspaceSettingsPage? _folderSettingsPage;
     private WorkspaceSettingsPage? _securitySettingsPage;
     private AutomationViewModel? _automationViewModel;
@@ -84,7 +85,7 @@ public sealed partial class MainWindow : Window
     private readonly MainWindowViewModel _viewModel;
     private readonly HomePageViewModel _homeViewModel;
     private readonly HomePageViewModel _projectsViewModel;
-    private readonly HomePageViewModel _appsViewModel;
+    private readonly AppsViewModel _appsViewModel;
 
     public MainWindow() : this(new LocalStore())
     {
@@ -149,7 +150,7 @@ public sealed partial class MainWindow : Window
                 await SendAsync();
             },
             StartProjectCreationAsync,
-            OpenProjectAsync,
+            OpenProjectOverviewAsync,
             () => OpenMemoryAsync(true),
             () => ShowPage(VaultPage()),
             () => ShowPage(BrowserPage(null, _home)),
@@ -168,7 +169,7 @@ public sealed partial class MainWindow : Window
                 await SendAsync();
             },
             StartProjectCreationAsync,
-            OpenProjectAsync,
+            OpenProjectOverviewAsync,
             () => OpenMemoryAsync(true),
             () => ShowPage(VaultPage()),
             () => ShowPage(BrowserPage(null, _projectsPage)),
@@ -177,27 +178,15 @@ public sealed partial class MainWindow : Window
             OpenAutomationPage,
             projectsOnly: true);
         _projectsPage = new HomePage { DataContext = _projectsViewModel };
-        _appsViewModel = new HomePageViewModel(
+        _appsViewModel = new AppsViewModel(
             _harness,
             CreateNavigation(NavigationSection.Apps),
-            async prompt =>
-            {
-                await OpenGeneralConversationAsync();
-                if (prompt.Length == 0) return;
-                _viewModel.EditorText = prompt;
-                await SendAsync();
-            },
-            StartProjectCreationAsync,
-            OpenProjectAsync,
-            () => OpenMemoryAsync(true),
-            () => ShowPage(VaultPage()),
-            () => ShowPage(BrowserPage(null, _appsPage)),
-            OpenSettings,
-            () => ShowPage(SkillsPage()),
-            OpenAutomationPage,
-            appsOnly: true,
-            openAppConnections: OpenAppConnections);
-        _appsPage = new HomePage { DataContext = _appsViewModel };
+            StartAppCreationAsync,
+            OpenAppConnections,
+            OpenProjectOverviewAsync,
+            uri => ShowPage(BrowserPage(uri, _appsPage)),
+            CopyPlainTextAsync);
+        _appsPage = new AppsPage { DataContext = _appsViewModel };
         _pageHost.Children.Clear();
         _pageHost.Children.Add(_home);
         _harness.BackgroundTaskChanged += OnBackgroundTaskChanged;
@@ -352,7 +341,8 @@ public sealed partial class MainWindow : Window
         OpenAppsPageAsync,
         OpenPresentationTemplates,
         OpenUsageGuideAsync,
-        OpenMySchedulePage);
+        OpenMySchedulePage,
+        OpenGeneralSettings);
 
     private void OpenPresentationTemplates()
     {
@@ -360,7 +350,8 @@ public sealed partial class MainWindow : Window
             CreateNavigation(NavigationSection.PresentationTemplates),
             new DocumentTemplateStore(_store.Root),
             brief => _harness.GenerateDocumentTemplateAsync(brief),
-            ChooseDocumentTemplateAsync);
+            ChooseDocumentTemplateAsync,
+            (title, message) => _dialogHost.ConfirmAsync(title, message, "삭제", danger: true));
         ShowPage(new PresentationTemplatesPage { DataContext = viewModel });
     }
 
@@ -619,6 +610,21 @@ public sealed partial class MainWindow : Window
         ShowPage(_appsPage);
     }
 
+    private async Task CopyPlainTextAsync(string text)
+    {
+        try
+        {
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            if (clipboard is null) throw new InvalidOperationException("클립보드를 사용할 수 없습니다.");
+            await clipboard.SetTextAsync(text);
+            _toastHost.Show("주소 복사", text, SiStatusTone.Success);
+        }
+        catch (Exception exception)
+        {
+            _toastHost.Show("복사 실패", exception.Message, SiStatusTone.Danger, 4200);
+        }
+    }
+
     private void OpenAppConnections()
     {
         var viewModel = new AppConnectionsViewModel(
@@ -663,6 +669,17 @@ public sealed partial class MainWindow : Window
         _viewModel.PageTitle = "새 프로젝트 구체화";
         _viewModel.StatusText = "LLM이 프로젝트 기본 정보를 구성하고 있습니다…";
         _viewModel.EditorText = "막연한 아이디어를 실행 가능한 프로젝트로 구체화하고 싶어요. 질문 카드로 하나씩 안내해 주세요.";
+        await SendAsync();
+    }
+
+    private async Task StartAppCreationAsync()
+    {
+        await OpenGeneralConversationAsync();
+        SetWorkflowView(true);
+        _projectOnboarding = true;
+        _viewModel.PageTitle = "새 앱 구체화";
+        _viewModel.StatusText = "LLM이 앱의 사용자, 문제와 핵심 기능을 구성하고 있습니다…";
+        _viewModel.EditorText = "새 앱을 만들고 싶어요. 사용자가 해결하려는 문제와 핵심 기능부터 질문 카드로 하나씩 구체화하고, 산출물 유형은 웹앱으로 구성해 주세요.";
         await SendAsync();
     }
 
@@ -719,6 +736,41 @@ public sealed partial class MainWindow : Window
         ShowEmptyState($"{project.Name} 프로젝트에서 새 작업을 시작할 수 있습니다.");
         ShowPage(_chatShell);
         await RefreshSessionsAsync();
+    }
+
+    private async Task OpenProjectOverviewAsync(ProjectInfo project)
+    {
+        SetWorkflowView(false);
+        _activeProject = project;
+        _activeProjectId = project.Id;
+        _viewModel.SidebarContext = project.Name;
+        _viewModel.HasActiveProject = true;
+
+        ProjectOverviewPage? page = null;
+        var viewModel = new ProjectOverviewViewModel(
+            _harness,
+            CreateNavigation(NavigationSection.Projects),
+            project,
+            OpenProjectAsync,
+            async selected =>
+            {
+                await OpenProjectAsync(selected);
+                await OpenProjectResourcesAsync();
+            },
+            async selected =>
+            {
+                await OpenProjectAsync(selected);
+                await OpenMemoryAsync();
+            },
+            async session =>
+            {
+                await OpenProjectAsync(project);
+                await SelectSessionAsync(session);
+            },
+            uri => ShowPage(BrowserPage(uri, page!)));
+        page = new ProjectOverviewPage { DataContext = viewModel };
+        ShowPage(page);
+        await viewModel.RefreshAsync();
     }
 
     private async Task OpenProjectResourcesAsync()
@@ -1082,11 +1134,12 @@ public sealed partial class MainWindow : Window
                 var delete = new Button
                 {
                     IsEnabled = !session.IsResponding,
-                    IsHitTestVisible = false,
-                    Opacity = 0,
+                    IsHitTestVisible = true,
+                    Opacity = session.IsResponding ? 0.22 : 0.48,
                     VerticalAlignment = VerticalAlignment.Center,
                     Content = deleteIcon
                 };
+                AutomationProperties.SetName(delete, $"{session.Title} 대화 삭제");
                 ToolTip.SetTip(delete, session.IsResponding ? "응답을 중지한 뒤 삭제할 수 있습니다." : "대화 삭제");
                 delete.Classes.Add("icon-action");
                 delete.Classes.Add("danger");
@@ -1095,13 +1148,11 @@ public sealed partial class MainWindow : Window
                 row.PointerEntered += (_, _) =>
                 {
                     if (session.IsResponding) return;
-                    delete.IsHitTestVisible = true;
-                    delete.Opacity = 0.68;
+                    delete.Opacity = 0.78;
                 };
                 row.PointerExited += (_, _) =>
                 {
-                    delete.IsHitTestVisible = false;
-                    delete.Opacity = 0;
+                    delete.Opacity = session.IsResponding ? 0.22 : 0.48;
                 };
                 delete.PointerEntered += (_, _) => delete.Opacity = 1;
                 row.Children.Add(open);
@@ -2512,9 +2563,16 @@ public sealed partial class MainWindow : Window
     {
         _settingsPage ??= CreateSettingsPage();
         _settingsPage.RefreshFromStore();
-        if (_pageHost.Children.FirstOrDefault() != _settingsPage)
-            _pageBeforeSettings = _pageHost.Children.FirstOrDefault() ?? _home;
+        RememberPageBeforeSettings();
         ShowPage(_settingsPage);
+    }
+
+    private void OpenGeneralSettings()
+    {
+        _generalSettingsPage ??= CreateGeneralSettingsPage();
+        _generalSettingsPage.RefreshFromStore();
+        RememberPageBeforeSettings();
+        ShowPage(_generalSettingsPage);
     }
 
     private sealed class ConcurrentSessionRun(
@@ -2550,12 +2608,23 @@ public sealed partial class MainWindow : Window
         return page;
     }
 
+    private GeneralSettingsPage CreateGeneralSettingsPage()
+    {
+        var page = new GeneralSettingsPage(_store, CreateNavigation(NavigationSection.GeneralSettings));
+        page.BackRequested += CloseSettings;
+        page.Saved += () =>
+        {
+            _toastHost.Show("일반 설정 저장", "화면과 업데이트 설정을 저장했습니다.", SiStatusTone.Success);
+            _ = RefreshHomeAsync();
+        };
+        return page;
+    }
+
     private void OpenFolderSettings()
     {
         _folderSettingsPage ??= CreateWorkspaceSettingsPage(WorkspaceSettingsSection.Folders);
         _folderSettingsPage.RefreshFromStore();
-        if (_pageHost.Children.FirstOrDefault() != _folderSettingsPage)
-            _pageBeforeSettings = _pageHost.Children.FirstOrDefault() ?? _home;
+        RememberPageBeforeSettings();
         ShowPage(_folderSettingsPage);
     }
 
@@ -2563,9 +2632,16 @@ public sealed partial class MainWindow : Window
     {
         _securitySettingsPage ??= CreateWorkspaceSettingsPage(WorkspaceSettingsSection.Security);
         _securitySettingsPage.RefreshFromStore();
-        if (_pageHost.Children.FirstOrDefault() != _securitySettingsPage)
-            _pageBeforeSettings = _pageHost.Children.FirstOrDefault() ?? _home;
+        RememberPageBeforeSettings();
         ShowPage(_securitySettingsPage);
+    }
+
+    private void RememberPageBeforeSettings()
+    {
+        var current = _pageHost.Children.FirstOrDefault();
+        if (current is null || current == _settingsPage || current == _generalSettingsPage ||
+            current == _folderSettingsPage || current == _securitySettingsPage) return;
+        _pageBeforeSettings = current;
     }
 
     private WorkspaceSettingsPage CreateWorkspaceSettingsPage(WorkspaceSettingsSection section)

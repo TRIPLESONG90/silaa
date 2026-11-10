@@ -83,8 +83,10 @@ public partial class HomePageViewModel : ObservableObject
     [ObservableProperty] private bool _isEmpty = true;
     [ObservableProperty] private bool _hasApps;
     public bool IsAppsEmpty => !HasApps;
+    public bool ShowProjectSection => !IsDashboard || HasProjects;
 
     partial void OnHasAppsChanged(bool value) => OnPropertyChanged(nameof(IsAppsEmpty));
+    partial void OnHasProjectsChanged(bool value) => OnPropertyChanged(nameof(ShowProjectSection));
 
     [RelayCommand(AllowConcurrentExecutions = false)]
     public async Task RefreshAsync()
@@ -103,8 +105,11 @@ public partial class HomePageViewModel : ObservableObject
             foreach (var project in projects)
             {
                 var card = new ProjectCardViewModel(project, _openProject);
-                if (!AppsOnly || project.Delivery.IsWebApp) Projects.Add(card);
-                if (project.Delivery.IsWebApp) Apps.Add(card);
+                if (AppsOnly && project.Delivery.IsWebApp)
+                    Projects.Add(card);
+                else if (ProjectsOnly || (!AppsOnly && !project.Delivery.IsWebApp && Projects.Count < 4))
+                    Projects.Add(card);
+                if (project.Delivery.IsWebApp && (ProjectsOnly || Apps.Count < 4)) Apps.Add(card);
             }
             HasProjects = Projects.Count > 0;
             HasApps = Apps.Count > 0;

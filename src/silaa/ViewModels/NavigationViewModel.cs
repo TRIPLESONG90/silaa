@@ -14,6 +14,7 @@ public enum NavigationSection
     Automation,
     Schedule,
     PresentationTemplates,
+    GeneralSettings,
     Settings,
     FolderSettings,
     SecuritySettings
@@ -37,7 +38,8 @@ public sealed class NavigationViewModel
         Func<Task>? openApps = null,
         Action? openPresentationTemplates = null,
         Func<Task>? openUsageGuide = null,
-        Action? openSchedule = null)
+        Action? openSchedule = null,
+        Action? openGeneralSettings = null)
     {
         ActiveSection = activeSection;
         OpenHomeCommand = new AsyncRelayCommand(openHome);
@@ -55,6 +57,7 @@ public sealed class NavigationViewModel
         OpenScheduleCommand = new RelayCommand(openSchedule ?? openAutomation);
         OpenPresentationTemplatesCommand = new RelayCommand(openPresentationTemplates ?? openSettings);
         OpenUsageGuideCommand = new AsyncRelayCommand(openUsageGuide ?? openHome);
+        OpenGeneralSettingsCommand = new RelayCommand(openGeneralSettings ?? openSettings);
     }
 
     public NavigationSection ActiveSection { get; }
@@ -68,6 +71,7 @@ public sealed class NavigationViewModel
     public bool IsAutomation => ActiveSection == NavigationSection.Automation;
     public bool IsSchedule => ActiveSection == NavigationSection.Schedule;
     public bool IsPresentationTemplates => ActiveSection == NavigationSection.PresentationTemplates;
+    public bool IsGeneralSettings => ActiveSection == NavigationSection.GeneralSettings;
     public bool IsSettings => ActiveSection == NavigationSection.Settings;
     public bool IsFolderSettings => ActiveSection == NavigationSection.FolderSettings;
     public bool IsSecuritySettings => ActiveSection == NavigationSection.SecuritySettings;
@@ -85,5 +89,6 @@ public sealed class NavigationViewModel
     public IRelayCommand OpenAutomationCommand { get; }
     public IRelayCommand OpenScheduleCommand { get; }
     public IRelayCommand OpenPresentationTemplatesCommand { get; }
+    public IRelayCommand OpenGeneralSettingsCommand { get; }
     public IAsyncRelayCommand OpenUsageGuideCommand { get; }
 }

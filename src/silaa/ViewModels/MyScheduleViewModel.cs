@@ -11,6 +11,7 @@ public partial class MyScheduleViewModel : ObservableObject
     private readonly LlmHarness _harness;
     private readonly Func<Task> _createEvent;
     private readonly Func<string, string, Task<bool>> _confirm;
+    private IReadOnlyList<CalendarEventInfo> _allEvents = [];
 
     public MyScheduleViewModel(
         LlmHarness harness,
@@ -26,10 +27,14 @@ public partial class MyScheduleViewModel : ObservableObject
 
     public NavigationViewModel Navigation { get; }
     public ObservableCollection<ScheduleAgendaItemViewModel> Items { get; } = [];
+    public IReadOnlyList<string> Views { get; } = ["다가오는 일정", "오늘", "7일"];
 
     [ObservableProperty] private string _summary = "일정을 불러오는 중";
     [ObservableProperty] private string _error = "";
     [ObservableProperty] private bool _hasNoItems = true;
+    [ObservableProperty] private string _selectedView = "다가오는 일정";
+
+    partial void OnSelectedViewChanged(string value) => ApplyView();
 
     [RelayCommand(AllowConcurrentExecutions = false)]
     public async Task RefreshAsync()
@@ -37,20 +42,17 @@ public partial class MyScheduleViewModel : ObservableObject
         try
         {
             var now = DateTimeOffset.Now;
-            var events = await _harness.ListCalendarEventsAsync();
-            Items.Clear();
-            foreach (var item in events
-                         .Where(item => item.EndAt.ToLocalTime() >= now.AddDays(-1))
-                         .OrderBy(item => item.StartAt)
-                         .Take(200))
-                Items.Add(new ScheduleAgendaItemViewModel(item, DeleteAsync));
-            var today = Items.Count(item => item.When.Date == now.Date);
-            Summary = $"오늘 {today}개 · 예정 {Items.Count}개";
-            HasNoItems = Items.Count == 0;
+            _allEvents = (await _harness.ListCalendarEventsAsync())
+                .Where(item => item.EndAt.ToLocalTime() >= now.AddDays(-1))
+                .OrderBy(item => item.StartAt)
+                .Take(200)
+                .ToList();
+            ApplyView();
             Error = "";
         }
         catch (Exception exception) when (exception is IOException or InvalidOperationException)
         {
+            _allEvents = [];
             Items.Clear();
             HasNoItems = true;
             Summary = "일정을 불러오지 못했습니다";
@@ -65,9 +67,23 @@ public partial class MyScheduleViewModel : ObservableObject
     {
         if (!await _confirm("일정 삭제", $"‘{item.Title}’ 일정을 삭제할까요?")) return;
         if (!_harness.DeleteCalendarEvent(item.Id)) return;
-        Items.Remove(item);
+        _allEvents = _allEvents.Where(entry => entry.Id != item.Id).ToList();
+        ApplyView();
+    }
+
+    private void ApplyView()
+    {
         var now = DateTimeOffset.Now;
-        Summary = $"오늘 {Items.Count(entry => entry.When.Date == now.Date)}개 · 예정 {Items.Count}개";
+        var filtered = SelectedView switch
+        {
+            "오늘" => _allEvents.Where(item => item.StartAt.ToLocalTime().Date == now.Date),
+            "7일" => _allEvents.Where(item => item.EndAt.ToLocalTime() >= now && item.StartAt.ToLocalTime() < now.AddDays(7)),
+            _ => _allEvents.AsEnumerable()
+        };
+        Items.Clear();
+        foreach (var item in filtered) Items.Add(new ScheduleAgendaItemViewModel(item, DeleteAsync));
+        var today = _allEvents.Count(item => item.StartAt.ToLocalTime().Date == now.Date);
+        Summary = $"오늘 {today}개 · 표시 {Items.Count}개";
         HasNoItems = Items.Count == 0;
     }
 }
@@ -77,6 +93,7 @@ public sealed class ScheduleAgendaItemViewModel
     public ScheduleAgendaItemViewModel(CalendarEventInfo item, Func<ScheduleAgendaItemViewModel, Task> delete)
     {
         Id = item.Id;
+        Source = item;
         When = item.StartAt.ToLocalTime();
         Title = item.Title;
         Kind = item.AllDay ? "하루 종일" : "일정";
@@ -90,6 +107,7 @@ public sealed class ScheduleAgendaItemViewModel
     }
 
     public string Id { get; }
+    public CalendarEventInfo Source { get; }
     public DateTimeOffset When { get; }
     public string Title { get; }
     public string Kind { get; }

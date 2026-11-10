@@ -174,20 +174,6 @@
             </StackPanel>
           </Border>
 
-          <StackPanel Spacing="4" Margin="1,6,1,0" IsVisible="{Binding IsFolderSettings}">
-            <TextBlock Classes="section-title" Text="화면" />
-            <TextBlock Classes="help" Text="블랙 &amp; 화이트 테마는 다음 실행부터 적용됩니다." />
-          </StackPanel>
-          <Border Classes="form-card" IsVisible="{Binding IsFolderSettings}">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
-              <StackPanel Spacing="4">
-                <TextBlock Classes="label" Text="화면 테마" />
-                <TextBlock Classes="help" Text="다크 또는 라이트 테마를 선택합니다." />
-              </StackPanel>
-              <ComboBox Grid.Column="1" MinWidth="160" ItemsSource="{Binding Themes}"
-                        SelectedItem="{Binding SelectedTheme, Mode=TwoWay}" />
-            </Grid>
-          </Border>
         </StackPanel>
       </ScrollViewer>
 

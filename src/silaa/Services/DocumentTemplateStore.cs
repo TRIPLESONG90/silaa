@@ -107,6 +107,33 @@ public sealed class DocumentTemplateStore
         }
     }
 
+    public DocumentDesignTemplate Duplicate(string format, string id)
+    {
+        var source = Resolve(format, id);
+        return Add(source with
+        {
+            Id = source.Id + "-copy",
+            Name = source.Name + " 복사본",
+            IsBuiltIn = false
+        });
+    }
+
+    public bool Remove(string format, string id)
+    {
+        format = NormalizeFormat(format);
+        lock (_gate)
+        {
+            var state = Load();
+            var removed = state.CustomTemplates.RemoveAll(template =>
+                template.Format == format && template.Id.Equals(id, StringComparison.Ordinal)) > 0;
+            if (!removed) return false;
+            if (state.DefaultTemplateIds.TryGetValue(format, out var defaultId) && defaultId == id)
+                state.DefaultTemplateIds[format] = BuiltInDefaults[format];
+            Save(state);
+            return true;
+        }
+    }
+
     public static string NormalizeFormat(string format) => format.Trim().TrimStart('.').ToLowerInvariant() switch
     {
         "doc" or "docs" or "word" or "docx" => "docx",

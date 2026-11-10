@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/TRIPLESONG90/silaa/releases/tag/v0.9.0-preview.7"><img alt="GitHub prerelease" src="https://img.shields.io/github/v/release/TRIPLESONG90/silaa?include_prereleases&style=flat-square&label=release"></a>
+  <a href="https://github.com/TRIPLESONG90/silaa/releases/tag/v0.9.0-preview.8"><img alt="GitHub prerelease" src="https://img.shields.io/github/v/release/TRIPLESONG90/silaa?include_prereleases&style=flat-square&label=release"></a>
   <a href="https://github.com/TRIPLESONG90/silaa/releases"><img alt="GitHub downloads" src="https://img.shields.io/github/downloads/TRIPLESONG90/silaa/total?style=flat-square"></a>
   <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square">
   <img alt="Avalonia 12" src="https://img.shields.io/badge/Avalonia-12.1-111111?style=flat-square">
@@ -46,20 +46,21 @@ silaa는 코딩 하네스의 강력한 로컬 도구 사용 능력을 일반 사
 
 ### Windows x64 프리뷰
 
-[**silaa 0.9.0 Preview 7 다운로드**](https://github.com/TRIPLESONG90/silaa/releases/download/v0.9.0-preview.7/silaa-0.9.0-preview.7-win-x64.zip)
+[**silaa 0.9.0 Preview 8 다운로드**](https://github.com/TRIPLESONG90/silaa/releases/download/v0.9.0-preview.8/silaa-0.9.0-preview.8-win-x64.zip)
 
 1. ZIP 파일을 내려받아 원하는 폴더에 압축을 풉니다.
 2. `silaa.exe`를 실행합니다.
 3. **설정 → LLM 연결**에서 OpenAI 호환 API 주소, 모델과 API 키를 등록합니다.
 
-자체 포함형 빌드라 별도의 .NET 런타임 설치가 필요하지 않습니다. 현재 실행 파일은 코드 서명이 없는 프리뷰이므로 Windows SmartScreen 경고가 표시될 수 있습니다. 배포 파일과 SHA-256 체크섬은 [Release 페이지](https://github.com/TRIPLESONG90/silaa/releases/tag/v0.9.0-preview.7)에서 함께 제공합니다.
+자체 포함형 빌드라 별도의 .NET 런타임 설치가 필요하지 않습니다. 현재 실행 파일은 코드 서명이 없는 프리뷰이므로 Windows SmartScreen 경고가 표시될 수 있습니다. 배포 파일과 SHA-256 체크섬은 [Release 페이지](https://github.com/TRIPLESONG90/silaa/releases/tag/v0.9.0-preview.8)에서 함께 제공합니다.
 
 ## 주요 기능
 
 ### 대화와 에이전트
 
 - 세션별 병렬 응답과 응답 중인 세션 표시
-- 추론 → 도구 호출 → 추론 순서를 유지하는 실시간 타임라인
+- 추론 → 도구 호출 → 추론 순서를 유지하는 실시간 타임라인과 블록별 복사
+- 누적 추론 중복 제거와 동일 도구 반복 루프 안전 중단
 - 첫 응답 이벤트를 기다리는 동안 표시되는 가벼운 스피너
 - 사용자 선택·확인·추가 정보가 필요할 때 사용하는 네이티브 인터랙션 카드
 - Markdown, 표, 코드, 차트 렌더링과 대화 전체 복사
@@ -70,6 +71,7 @@ silaa는 코딩 하네스의 강력한 로컬 도구 사용 능력을 일반 사
 
 - 대화형 설문으로 막연한 아이디어를 실행 가능한 프로젝트 정보로 구체화
 - 프로젝트별 세션, 파일, 웹 주소, 코드와 비정형 자료 관리
+- 프로젝트 개요와 앱 실행 상태·주소를 관리하는 전용 화면
 - 전체·프로젝트·세션 범위의 폴더 접근 권한
 - 프로젝트 Memory와 DPAPI로 보호되는 Vault
 - Claude Code·Codex 형식의 `SKILL.md` 검색, 웹 가이드 지침 등록과 로딩

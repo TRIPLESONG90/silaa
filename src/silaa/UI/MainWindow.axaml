@@ -60,7 +60,7 @@
         <Border x:Name="ChatSidebar" Width="{DynamicResource SiSidebarWidth}" Background="{DynamicResource SiPanelBrush}"
                 BorderBrush="{DynamicResource SiDividerBrush}" BorderThickness="0,0,1,0">
           <Grid RowDefinitions="Auto,Auto,Auto,*,Auto">
-            <Grid Margin="16,18,14,13" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
+            <Grid Margin="16,18,14,13" ColumnDefinitions="Auto,*" ColumnSpacing="9">
               <Border Width="28" Height="28" CornerRadius="8" Background="{DynamicResource SiAccentBrush}">
                 <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center"
                            Foreground="{DynamicResource SiOnAccentBrush}"
@@ -71,7 +71,6 @@
                 <TextBlock x:Name="SidebarContext" FontSize="9.5" TextTrimming="CharacterEllipsis"
                            Foreground="{DynamicResource SiMutedBrush}" Text="{Binding SidebarContext}" />
               </StackPanel>
-              <materialIcons:MaterialIcon Grid.Column="2" Classes="ui-icon" Width="15" Height="15" Kind="ChevronDown" />
             </Grid>
 
             <StackPanel Grid.Row="1" Margin="10,0,10,10" Spacing="6">

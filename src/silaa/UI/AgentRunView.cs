@@ -1,8 +1,11 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Material.Icons;
+using Material.Icons.Avalonia;
 using System.Text;
 
 namespace silaa.UI;
@@ -262,6 +265,32 @@ internal sealed class AgentRunView
 
     private void StopWaiting() => _waiting.Stop();
 
+    private static Button CopyIconButton(string accessibleName, Func<string> text)
+    {
+        var icon = new MaterialIcon
+        {
+            Width = 14,
+            Height = 14,
+            Foreground = Palette.Muted
+        };
+        icon.AttachedToVisualTree += (_, _) => icon.Kind ??= MaterialIconKind.ContentCopy;
+        var copy = new Button
+        {
+            Content = icon,
+            Width = 28,
+            Height = 26,
+            Padding = new Thickness(5),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        copy.Classes.Add("icon-action");
+        copy.Classes.Add("compact");
+        ToolTip.SetTip(copy, accessibleName);
+        AutomationProperties.SetName(copy, accessibleName);
+        copy.Click += async (_, _) => await Palette.CopyAsync(copy, text());
+        return copy;
+    }
+
     private sealed class WaitingIndicator
     {
         private readonly Avalonia.Controls.Shapes.Path _spinner = new()
@@ -405,6 +434,11 @@ internal sealed class AgentRunView
             };
             header.Classes.Add("ghost");
             header.Click += (_, _) => SetOpen(!_open);
+            var copy = CopyIconButton("추론 복사", () => _buffer.ToString());
+            var headerRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 5 };
+            headerRow.Children.Add(header);
+            Grid.SetColumn(copy, 1);
+            headerRow.Children.Add(copy);
             _bodyHost = new Border
             {
                 Child = _streamingBody,
@@ -414,7 +448,7 @@ internal sealed class AgentRunView
                 Margin = new Thickness(23, 1, 0, 3)
             };
             var stack = new StackPanel { Spacing = 2 };
-            stack.Children.Add(header);
+            stack.Children.Add(headerRow);
             stack.Children.Add(_bodyHost);
             Root = stack;
         }
@@ -423,9 +457,53 @@ internal sealed class AgentRunView
 
         public void Append(string text)
         {
-            _buffer.Append(text);
-            _characterCount += text.Length;
+            var delta = DistinctStreamingDelta(text);
+            if (delta.Length == 0) return;
+            _buffer.Append(delta);
+            _characterCount += delta.Length;
             _meta.Text = CharacterCount(_characterCount);
+        }
+
+        private string DistinctStreamingDelta(string text)
+        {
+            if (_buffer.Length == 0 || text.Length == 0) return text;
+
+            // Some OpenAI-compatible providers stream the entire reasoning-so-far
+            // instead of a delta. Keep only the newly appended suffix.
+            if (text.Length >= _buffer.Length && BufferEqualsPrefix(text))
+                return text[_buffer.Length..];
+            if (text.Length >= 64 && text.Length <= _buffer.Length && BufferEndsWith(text)) return "";
+
+            // Also handle a replayed tail followed by new content without treating
+            // ordinary repeated words as a loop.
+            var maximumOverlap = Math.Min(Math.Min(_buffer.Length, text.Length), 8_192);
+            for (var overlap = maximumOverlap; overlap >= 64; overlap--)
+                if (BufferSuffixEqualsPrefix(text, overlap))
+                    return text[overlap..];
+            return text;
+        }
+
+        private bool BufferEqualsPrefix(string text)
+        {
+            for (var index = 0; index < _buffer.Length; index++)
+                if (_buffer[index] != text[index]) return false;
+            return true;
+        }
+
+        private bool BufferEndsWith(string text)
+        {
+            var offset = _buffer.Length - text.Length;
+            for (var index = 0; index < text.Length; index++)
+                if (_buffer[offset + index] != text[index]) return false;
+            return true;
+        }
+
+        private bool BufferSuffixEqualsPrefix(string text, int length)
+        {
+            var offset = _buffer.Length - length;
+            for (var index = 0; index < length; index++)
+                if (_buffer[offset + index] != text[index]) return false;
+            return true;
         }
 
         public void FlushStreamingPreview()
@@ -480,11 +558,14 @@ internal sealed class AgentRunView
         };
         private readonly Border _details;
         private readonly Border _resultSection;
+        private readonly string _input;
+        private string _resultText = "";
         private bool _open = true;
 
         public ToolActivityView(string name, string input)
         {
             Name = name;
+            _input = input.Length == 0 ? "{}" : input;
             var summary = Compact(input);
             var title = new TextBlock
             {
@@ -524,9 +605,15 @@ internal sealed class AgentRunView
             };
             header.Classes.Add("ghost");
             header.Click += (_, _) => SetOpen(!_open);
+            var copy = CopyIconButton("도구 호출 복사", () =>
+                $"{Name}\n\n입력\n{_input}\n\n결과\n{(_resultText.Length == 0 ? "(대기 중)" : _resultText)}");
+            var headerRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 5 };
+            headerRow.Children.Add(header);
+            Grid.SetColumn(copy, 1);
+            headerRow.Children.Add(copy);
 
             var detailsStack = new StackPanel { Spacing = 0 };
-            detailsStack.Children.Add(DetailSection("입력", input.Length == 0 ? "{}" : input));
+            detailsStack.Children.Add(DetailSection("입력", _input));
             _resultSection = DetailSection("결과", "");
             _resultSection.IsVisible = false;
             detailsStack.Children.Add(_resultSection);
@@ -540,7 +627,7 @@ internal sealed class AgentRunView
                 Margin = new Thickness(25, 4, 0, 6)
             };
             var stack = new StackPanel { Spacing = 1 };
-            stack.Children.Add(header);
+            stack.Children.Add(headerRow);
             stack.Children.Add(_details);
             Root = stack;
         }
@@ -555,7 +642,8 @@ internal sealed class AgentRunView
             var failed = result.StartsWith("오류:", StringComparison.OrdinalIgnoreCase);
             _status.Set(failed ? "실패" : "완료", failed ? SiStatusTone.Danger : SiStatusTone.Success);
             SetOpen(false);
-            _result.Text = result.Length == 0 ? "(결과 없음)" : result;
+            _resultText = result.Length == 0 ? "(결과 없음)" : result;
+            _result.Text = _resultText;
             _resultSection.IsVisible = true;
         }
 

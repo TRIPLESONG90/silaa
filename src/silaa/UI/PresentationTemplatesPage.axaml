@@ -234,13 +234,22 @@
                            Text="LIVE PREVIEW" />
                 <TextBlock FontSize="16" FontWeight="SemiBold" Text="{Binding EditingTitle}" />
               </StackPanel>
-              <Button Grid.Column="1" Classes="primary" IsEnabled="{Binding CanEdit}"
-                      Command="{Binding ApplyEditorCommand}">
-                <StackPanel Orientation="Horizontal" Spacing="7">
-                  <materialIcons:MaterialIcon Classes="ui-icon on-accent" Width="15" Height="15" Kind="Check" />
-                  <TextBlock Text="적용" />
-                </StackPanel>
-              </Button>
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="7">
+                <Button Classes="secondary" IsEnabled="{Binding CanEdit}" Command="{Binding DuplicateEditorCommand}"
+                        AutomationProperties.Name="현재 템플릿 복제">
+                  <materialIcons:MaterialIcon Classes="ui-icon" Width="15" Height="15" Kind="ContentCopy" />
+                </Button>
+                <Button Classes="danger" IsVisible="{Binding CanDeleteEditingTemplate}" Command="{Binding DeleteEditorCommand}"
+                        AutomationProperties.Name="현재 템플릿 삭제">
+                  <materialIcons:MaterialIcon Classes="ui-icon" Width="15" Height="15" Kind="DeleteOutline" />
+                </Button>
+                <Button Classes="primary" IsEnabled="{Binding CanEdit}" Command="{Binding ApplyEditorCommand}">
+                  <StackPanel Orientation="Horizontal" Spacing="7">
+                    <materialIcons:MaterialIcon Classes="ui-icon on-accent" Width="15" Height="15" Kind="Check" />
+                    <TextBlock Text="적용" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
             </Grid>
 
             <Grid Grid.Row="1" Margin="18,0,18,14">

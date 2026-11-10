@@ -84,6 +84,12 @@ public sealed class LlmHarness : IAsyncDisposable
         notes. Use native calendar question cards for missing values and the final confirmation. Do not create the
         event until the user explicitly confirms. Never add an alarm or preparation task unless the user accepts it;
         if accepted, ask for its exact timing/content. Calendar events are not cron schedules.
+
+        # Execution discipline
+        Once you identify the next read-only inspection or execution tool, call it immediately. Do not restate or
+        rewrite the same plan before acting. Never repeat an environment assumption from earlier conversation when
+        an inspection tool can verify the current machine. If a required tool is unavailable or an approval is
+        missing, explain that exact blocker once and stop instead of cycling through the plan again.
         """;
     private const string MultiAgentInstructions = """
 
@@ -722,6 +728,7 @@ public sealed class LlmHarness : IAsyncDisposable
                 : BuildHistory(_sessions.Messages(sessionId), settings);
             var answer = new StringBuilder();
             var toolNames = new Dictionary<string, string>(StringComparer.Ordinal);
+            var progressGuard = new AgentProgressGuard();
             var verifiedSkillGuidance = false;
 
             onEvent?.Invoke(new ChatRunEvent("status", "Microsoft Agent Framework 실행 중…", sessionId));
@@ -740,6 +747,13 @@ public sealed class LlmHarness : IAsyncDisposable
                                 break;
                             case FunctionCallContent call:
                                 if (!string.IsNullOrWhiteSpace(call.CallId)) toolNames[call.CallId] = call.Name;
+                                if (progressGuard.ObserveToolCall(call.CallId, call.Name, call.Arguments))
+                                {
+                                    onEvent?.Invoke(new ChatRunEvent("status", "같은 도구 호출 반복을 감지해 실행을 중단했습니다.", sessionId));
+                                    throw new LlmUnavailableException(
+                                        $"Agent가 같은 도구 ‘{call.Name}’를 같은 인자로 반복 호출해 안전하게 중단했습니다. " +
+                                        "현재 결과를 확인한 뒤 요청을 이어서 보내주세요.");
+                                }
                                 if (!IsOnboardingTool(call.Name))
                                 {
                                     onEvent?.Invoke(new ChatRunEvent("tool_call", FormatToolCall(call), sessionId, call.CallId));

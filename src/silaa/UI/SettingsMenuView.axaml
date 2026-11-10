@@ -41,9 +41,19 @@
                     VerticalScrollBarVisibility="Auto">
       <StackPanel Margin="10,0" Spacing="3">
         <TextBlock Margin="9,2,0,7" FontSize="9.5" FontWeight="SemiBold"
+                   LetterSpacing="1.1" Foreground="{DynamicResource SiMutedBrush}" Text="GENERAL" />
+        <Button Classes="settings-nav" Classes.selected="{Binding IsGeneralSettings}"
+                Command="{Binding OpenGeneralSettingsCommand}" AutomationProperties.Name="일반 설정">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <materialIcons:MaterialIcon Classes="ui-icon" Kind="TuneVariant" />
+            <TextBlock VerticalAlignment="Center" Text="일반" />
+          </StackPanel>
+        </Button>
+
+        <TextBlock Margin="9,18,0,7" FontSize="9.5" FontWeight="SemiBold"
                    LetterSpacing="1.1" Foreground="{DynamicResource SiMutedBrush}" Text="CONNECTION" />
         <Button Classes="settings-nav" Classes.selected="{Binding IsSettings}"
-                Command="{Binding OpenSettingsCommand}">
+                Command="{Binding OpenSettingsCommand}" AutomationProperties.Name="LLM 연결 설정">
           <StackPanel Orientation="Horizontal" Spacing="10">
             <materialIcons:MaterialIcon Classes="ui-icon" Kind="ServerOutline" />
             <TextBlock VerticalAlignment="Center" Text="LLM 연결" />
@@ -53,14 +63,14 @@
         <TextBlock Margin="9,18,0,7" FontSize="9.5" FontWeight="SemiBold"
                    LetterSpacing="1.1" Foreground="{DynamicResource SiMutedBrush}" Text="PERMISSIONS" />
         <Button Classes="settings-nav" Classes.selected="{Binding IsFolderSettings}"
-                Command="{Binding OpenFolderSettingsCommand}">
+                Command="{Binding OpenFolderSettingsCommand}" AutomationProperties.Name="접근 허용 폴더 설정">
           <StackPanel Orientation="Horizontal" Spacing="10">
             <materialIcons:MaterialIcon Classes="ui-icon" Kind="FolderOutline" />
             <TextBlock VerticalAlignment="Center" Text="접근 허용 폴더" />
           </StackPanel>
         </Button>
         <Button Classes="settings-nav" Classes.selected="{Binding IsSecuritySettings}"
-                Command="{Binding OpenSecuritySettingsCommand}">
+                Command="{Binding OpenSecuritySettingsCommand}" AutomationProperties.Name="Agent 보안 설정">
           <StackPanel Orientation="Horizontal" Spacing="10">
             <materialIcons:MaterialIcon Classes="ui-icon" Kind="ShieldCheckOutline" />
             <TextBlock VerticalAlignment="Center" Text="Agent 보안" />
@@ -70,7 +80,7 @@
         <TextBlock Margin="9,18,0,7" FontSize="9.5" FontWeight="SemiBold"
                    LetterSpacing="1.1" Foreground="{DynamicResource SiMutedBrush}" Text="DATA" />
         <Button Classes="settings-nav" Classes.selected="{Binding IsVault}"
-                Command="{Binding OpenVaultCommand}">
+                Command="{Binding OpenVaultCommand}" AutomationProperties.Name="Vault 설정">
           <StackPanel Orientation="Horizontal" Spacing="10">
             <materialIcons:MaterialIcon Classes="ui-icon" Kind="LockOutline" />
             <TextBlock VerticalAlignment="Center" Text="Vault" />
