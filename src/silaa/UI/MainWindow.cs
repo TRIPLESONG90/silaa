@@ -1748,7 +1748,7 @@ public sealed partial class MainWindow : Window
             _activeRunIsCalendarOnboarding = automationSetup == "calendar";
             var result = await _harness.RunAsync(_sessionId, prompt, OnRunEvent, _runCancellation.Token,
                 projectId: _activeProjectId, projectSetup: projectSetup, automationSetup: automationSetup,
-                agentContext: agentContext);
+                serializeRun: false, agentContext: agentContext);
             FlushRunEvents();
             if (!IsWorkflowId(result.SessionId))
             {

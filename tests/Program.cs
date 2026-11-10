@@ -1404,6 +1404,11 @@ catch (ArgumentException) { }
 
 if (OperatingSystem.IsWindows())
 {
+    Assert(PythonEnvironmentTools.CandidatePriority(
+               @"C:\Users\tester\AppData\Local\Python\bin\python.exe", "where.exe python", false, false, false) >
+           PythonEnvironmentTools.CandidatePriority(
+               @"C:\Program Files\LibreOffice\program\python.exe", "where.exe python", true, true, false),
+        "a normal per-user Python is preferred over an application-bundled runtime even when LibreOffice has pip");
     using (var pythonProbe = JsonDocument.Parse(await new PythonEnvironmentTools().InspectAsync()))
     {
         Assert(pythonProbe.RootElement.TryGetProperty("detected", out _) &&
@@ -1760,6 +1765,15 @@ if (OperatingSystem.IsWindows())
         Assert(installedSkill.Name == "lab-helper" && installedSkill.Verified && installedSkill.FileCount == 2 &&
                File.Exists(Path.Combine(workspace, ".silaa", "skills", "lab-helper", "references", "checklist.md")),
             "skill installer validates and atomically copies a complete local package");
+        var installedSkillTools = new SkillManagementTools(workspace, root);
+        Assert(installedSkillTools.ReadSkillReference("lab-helper", "references/checklist.md").Contains("# Checklist"),
+            "an Agent can read a relative setup/reference file from an installed Skill instead of deliberating about an inaccessible link");
+        AssertThrows<UnauthorizedAccessException>(
+            () => installedSkillTools.ReadSkillReference("lab-helper", "../SKILL.md"),
+            "Skill reference reads cannot traverse outside the selected Skill folder");
+        Assert(SkillLoader.BuildSystemPrompt(workspace, null, root)
+                .Contains("name: python-development", StringComparison.Ordinal),
+            "the bundled Python environment guidance is available to ordinary Agent runs");
         await using (var webSkillServer = new MockSkillServer())
         {
             var webInstalledSkill = await installer.InstallAsync(webSkillServer.DocumentationUrl, "", "project", false);

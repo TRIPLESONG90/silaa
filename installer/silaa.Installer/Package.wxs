@@ -1,0 +1,46 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+    Name="silaa"
+    Manufacturer="TRIPLESONG90"
+    Version="$(var.ProductVersion)"
+    UpgradeCode="{591EC29E-B4F8-478C-9E03-D03EB72CC351}"
+    Scope="perMachine"
+    Compressed="yes">
+
+    <SummaryInformation Description="silaa local AI agent workspace" Manufacturer="TRIPLESONG90" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of silaa is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="silaa" />
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="silaa" />
+    </StandardDirectory>
+
+    <Feature Id="MainFeature" Title="silaa" Level="1">
+      <ComponentGroupRef Id="PublishedFiles" />
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <ComponentGroup Id="PublishedFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PublishDir)\**">
+        <Exclude Files="$(var.PublishDir)\silaa.exe" />
+        <Exclude Files="$(var.PublishDir)\**\*.pdb" />
+      </Files>
+      <Component Id="MainExecutable" Guid="*">
+        <File Id="SilaaExecutable" Source="$(var.PublishDir)\silaa.exe" KeyPath="yes">
+          <Shortcut
+            Id="StartMenuShortcut"
+            Directory="ApplicationProgramsFolder"
+            Name="silaa"
+            Description="Open silaa"
+            Advertise="yes"
+            WorkingDirectory="INSTALLFOLDER" />
+        </File>
+        <RemoveFolder Id="RemoveApplicationProgramsFolder" Directory="ApplicationProgramsFolder" On="uninstall" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>

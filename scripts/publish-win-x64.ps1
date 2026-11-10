@@ -14,8 +14,17 @@ if (-not $stagingFull.StartsWith($publishFull) -or -not $outFull.StartsWith($pub
 }
 if ([IO.Directory]::Exists($stagingFull)) { [IO.Directory]::Delete($stagingFull, $true) }
 
-dotnet publish $project -c Release -r win-x64 --self-contained true -o $stagingFull
+dotnet publish $project -c Release -r win-x64 --self-contained true -o $stagingFull `
+    -p:PublishSingleFile=true `
+    -p:IncludeNativeLibrariesForSelfExtract=true `
+    -p:EnableCompressionInSingleFile=true `
+    -p:DebugType=None `
+    -p:DebugSymbols=false
 if ($LASTEXITCODE -ne 0) { throw 'Windows publish failed.' }
+
+foreach ($symbol in [IO.Directory]::EnumerateFiles($stagingFull, '*.pdb', [IO.SearchOption]::AllDirectories)) {
+    [IO.File]::Delete($symbol)
+}
 
 if ([IO.Directory]::Exists($outFull)) {
     $running = Get-CimInstance Win32_Process -Filter "Name = 'silaa.exe'" | Where-Object {

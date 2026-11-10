@@ -69,6 +69,32 @@ internal static class SkillLoader
         return "";
     }
 
+    public static string ReadSkillReference(string name, string relativePath, string workspace, string? dataRoot = null)
+    {
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(relativePath))
+            throw new ArgumentException("Skill name and reference path are required.");
+        if (Path.IsPathRooted(relativePath)) throw new UnauthorizedAccessException("Skill reference paths must be relative.");
+        if (relativePath.Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+                StringSplitOptions.RemoveEmptyEntries).Any(segment => segment == ".."))
+            throw new UnauthorizedAccessException("Skill reference paths cannot leave the Skill folder.");
+        var normalizedName = Path.GetFileName(name.Trim());
+        if (!normalizedName.Equals(name.Trim(), StringComparison.Ordinal))
+            throw new UnauthorizedAccessException("Invalid Skill name.");
+        foreach (var root in SkillRoots(workspace, dataRoot))
+        {
+            var directory = Path.GetFullPath(Path.Combine(root, normalizedName));
+            var file = Path.GetFullPath(Path.Combine(directory, relativePath));
+            if (!FolderAccessPolicy.IsInside(file, directory) || !File.Exists(file)) continue;
+            var extension = Path.GetExtension(file).ToLowerInvariant();
+            if (extension is not (".md" or ".txt" or ".json" or ".yaml" or ".yml" or ".toml"))
+                throw new NotSupportedException("Only text Skill references can be read.");
+            var text = File.ReadAllText(file);
+            if (text.Length > 100_000) throw new InvalidOperationException("Skill reference exceeds 100,000 characters.");
+            return text;
+        }
+        throw new FileNotFoundException($"Reference '{relativePath}' was not found in Skill '{name}'.");
+    }
+
     private static IEnumerable<string> SkillFiles(string workspace, string? dataRoot)
     {
         var seen = new HashSet<string>(OperatingSystem.IsWindows()
@@ -101,6 +127,17 @@ internal static class SkillLoader
 
         var review = Path.Combine(codex, ".system", "review-agent", "SKILL.md");
         if (File.Exists(review) && seen.Add(Path.GetFullPath(review))) yield return review;
+    }
+
+    private static IEnumerable<string> SkillRoots(string workspace, string? dataRoot)
+    {
+        yield return Path.Combine(Path.GetFullPath(workspace), ".silaa", "skills");
+        yield return Path.Combine(Path.GetFullPath(dataRoot ?? AppPaths.DataRoot), "skills");
+        var bundled = FindBundledDirectory("skills");
+        if (bundled is not null) yield return bundled;
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        yield return Path.Combine(home, ".claude", "skills");
+        yield return Path.Combine(home, ".codex", "skills");
     }
 
     private static IEnumerable<string> DirectSkills(string root)

@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/TRIPLESONG90/silaa/releases/tag/v0.9.0-preview.8"><img alt="GitHub prerelease" src="https://img.shields.io/github/v/release/TRIPLESONG90/silaa?include_prereleases&style=flat-square&label=release"></a>
+  <a href="https://github.com/TRIPLESONG90/silaa/releases/tag/v0.9.0-preview.9"><img alt="GitHub prerelease" src="https://img.shields.io/github/v/release/TRIPLESONG90/silaa?include_prereleases&style=flat-square&label=release"></a>
   <a href="https://github.com/TRIPLESONG90/silaa/releases"><img alt="GitHub downloads" src="https://img.shields.io/github/downloads/TRIPLESONG90/silaa/total?style=flat-square"></a>
   <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square">
   <img alt="Avalonia 12" src="https://img.shields.io/badge/Avalonia-12.1-111111?style=flat-square">
@@ -46,13 +46,15 @@ silaa는 코딩 하네스의 강력한 로컬 도구 사용 능력을 일반 사
 
 ### Windows x64 프리뷰
 
-[**silaa 0.9.0 Preview 8 다운로드**](https://github.com/TRIPLESONG90/silaa/releases/download/v0.9.0-preview.8/silaa-0.9.0-preview.8-win-x64.zip)
+[**silaa 0.9.0 Preview 9 ZIP 다운로드**](https://github.com/TRIPLESONG90/silaa/releases/download/v0.9.0-preview.9/silaa-0.9.0-preview.9-win-x64.zip)
+
+[**silaa 0.9.0 Preview 9 MSI 설치 파일**](https://github.com/TRIPLESONG90/silaa/releases/download/v0.9.0-preview.9/silaa-0.9.0-preview.9-win-x64.msi)
 
 1. ZIP 파일을 내려받아 원하는 폴더에 압축을 풉니다.
 2. `silaa.exe`를 실행합니다.
 3. **설정 → LLM 연결**에서 OpenAI 호환 API 주소, 모델과 API 키를 등록합니다.
 
-자체 포함형 빌드라 별도의 .NET 런타임 설치가 필요하지 않습니다. 현재 실행 파일은 코드 서명이 없는 프리뷰이므로 Windows SmartScreen 경고가 표시될 수 있습니다. 배포 파일과 SHA-256 체크섬은 [Release 페이지](https://github.com/TRIPLESONG90/silaa/releases/tag/v0.9.0-preview.8)에서 함께 제공합니다.
+자체 포함형 단일 파일 빌드라 별도의 .NET 런타임 설치가 필요하지 않습니다. MSI는 Windows 전체 사용자용으로 설치되므로 관리자 승인을 요청할 수 있습니다. 현재 실행 파일은 코드 서명이 없는 프리뷰이므로 Windows SmartScreen 경고가 표시될 수 있습니다. 배포 파일과 SHA-256 체크섬은 [Release 페이지](https://github.com/TRIPLESONG90/silaa/releases/tag/v0.9.0-preview.9)에서 함께 제공합니다.
 
 ## 주요 기능
 
