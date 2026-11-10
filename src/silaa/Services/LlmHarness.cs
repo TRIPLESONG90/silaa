@@ -625,6 +625,14 @@ public sealed class LlmHarness : IAsyncDisposable
             var workspaceTools = setupMode
                 ? null
                 : new WorkspaceTools(effectiveWorkspace, _store.Vault, allowedDirectories, security);
+            IReadOnlyList<StoredChatMessage> sessionHistory = setupMode ? [] : _sessions.Messages(sessionId);
+            var routingContext = BuildRoutingContext(sessionHistory);
+            var skillSelection = setupMode
+                ? SkillSelection.Empty
+                : SkillLoader.SelectRelevantSkills(effectiveWorkspace, _store.Root, routingContext);
+            var toolPlan = setupMode
+                ? null
+                : HarnessToolRouter.Create(prompt, skillSelection, allowBackgroundAutomation);
             AutomationOnboardingTools? automationTools = null;
             IList<AITool> tools;
             if (projectSetup)
@@ -646,49 +654,59 @@ public sealed class LlmHarness : IAsyncDisposable
                     sessionId, _interaction, _store.Calendar, _automation, onEvent, runTimeout).CreateFunctions();
             }
             else
-                tools = workspaceTools!.CreateFunctions();
-            foreach (var tool in new DateTimeTools().CreateFunctions()) tools.Add(tool);
-            foreach (var tool in new PythonEnvironmentTools().CreateFunctions()) tools.Add(tool);
-            if (!setupMode)
+                tools = toolPlan!.Select(workspaceTools!.CreateFunctions());
+            if (setupMode)
             {
-                foreach (var tool in new UserInteractionTools(
-                             sessionId, _interaction, onEvent, runTimeout).CreateFunctions()) tools.Add(tool);
-                foreach (var tool in new CalendarOnboardingTools(
-                             sessionId, _interaction, _store.Calendar, _automation, onEvent, runTimeout).CreateFunctions()) tools.Add(tool);
+                foreach (var tool in new DateTimeTools().CreateFunctions()) tools.Add(tool);
+                foreach (var tool in new PythonEnvironmentTools().CreateFunctions()) tools.Add(tool);
+            }
+            else
+            {
+                void AddSelected(IEnumerable<AITool> candidates)
+                {
+                    foreach (var tool in toolPlan!.Select(candidates)) tools.Add(tool);
+                }
+
+                AddSelected(new DateTimeTools().CreateFunctions());
+                AddSelected(new PythonEnvironmentTools().CreateFunctions());
+                AddSelected(new UserInteractionTools(
+                    sessionId, _interaction, onEvent, runTimeout).CreateFunctions());
+                AddSelected(new CalendarOnboardingTools(
+                    sessionId, _interaction, _store.Calendar, _automation, onEvent, runTimeout).CreateFunctions());
                 var projectContextTools = new ProjectContextTools(project?.Id, _store.Resources, _store.Memory);
-                foreach (var tool in projectContextTools.CreateFunctions()) tools.Add(tool);
+                AddSelected(projectContextTools.CreateFunctions());
                 var documentTools = new DocumentTools(
                     project?.Id, _store.Resources, workspaceTools!, new DocumentTemplateStore(_store.Root));
-                foreach (var tool in documentTools.CreateFunctions()) tools.Add(tool);
+                AddSelected(documentTools.CreateFunctions());
                 var folderAccessTools = new FolderAccessRequestTools(
                     sessionId, project?.Id, _store, _sessions, _projects,
                     workspaceTools!, _folderAccess, onEvent, runTimeout);
-                foreach (var tool in folderAccessTools.CreateFunctions()) tools.Add(tool);
+                AddSelected(folderAccessTools.CreateFunctions());
                 var networkAccessTools = new NetworkAccessRequestTools(
                     sessionId, project?.Id, _store, _sessions, _projects,
                     security!, _networkAccess, onEvent, runTimeout);
-                foreach (var tool in networkAccessTools.CreateFunctions()) tools.Add(tool);
-                foreach (var tool in new VaultSecretRequestTools(
-                             sessionId, _store, _vaultSecretRequests, onEvent, runTimeout).CreateFunctions()) tools.Add(tool);
-                foreach (var tool in new SkillManagementTools(
-                             effectiveWorkspace,
-                             _store.Root,
-                             workspaceTools!.HasDirectoryAccess,
-                             security,
-                             folderAccessTools,
-                             networkAccessTools).CreateFunctions()) tools.Add(tool);
-                foreach (var tool in new WebResearchTools(security!, networkAccessTools).CreateFunctions()) tools.Add(tool);
-                foreach (var tool in new ConnectedAppTools(
-                             _store.AppConnections, security!, networkAccessTools).CreateFunctions()) tools.Add(tool);
+                AddSelected(networkAccessTools.CreateFunctions());
+                AddSelected(new VaultSecretRequestTools(
+                    sessionId, _store, _vaultSecretRequests, onEvent, runTimeout).CreateFunctions());
+                AddSelected(new SkillManagementTools(
+                    effectiveWorkspace,
+                    _store.Root,
+                    workspaceTools!.HasDirectoryAccess,
+                    security,
+                    folderAccessTools,
+                    networkAccessTools).CreateFunctions());
+                AddSelected(new WebResearchTools(security!, networkAccessTools).CreateFunctions());
+                AddSelected(new ConnectedAppTools(
+                    _store.AppConnections, security!, networkAccessTools).CreateFunctions());
                 var workerTools = tools.ToList();
                 var reviewerTools = workspaceTools.CreateReadOnlyFunctions();
                 foreach (var tool in projectContextTools.CreateReadOnlyFunctions()) reviewerTools.Add(tool);
                 foreach (var tool in documentTools.CreateReadOnlyFunctions()) reviewerTools.Add(tool);
-                foreach (var tool in new MultiAgentTools(
-                             chatClient, settings, sessionId, BuildAgentTask(prompt, agentContext), workerTools, reviewerTools,
-                             runTimeout, onEvent).CreateFunctions()) tools.Add(tool);
+                AddSelected(new MultiAgentTools(
+                    chatClient, settings, sessionId, BuildAgentTask(prompt, agentContext), workerTools, reviewerTools,
+                    runTimeout, onEvent).CreateFunctions());
                 if (allowBackgroundAutomation)
-                    foreach (var tool in new BackgroundAutomationTools(_automation, project?.Id).CreateFunctions()) tools.Add(tool);
+                    AddSelected(new BackgroundAutomationTools(_automation, project?.Id).CreateFunctions());
             }
             var instructions = projectSetup
                 ? ProjectOnboardingInstructions + "\n\n# Editable app-delivery baseline\n" +
@@ -697,9 +715,9 @@ public sealed class LlmHarness : IAsyncDisposable
                     ? CalendarOnboardingInstructions
                     : automationSetup is not null
                     ? AutomationOnboardingInstructions + $"\nRequested setup: {automationSetup}. Call get_current_datetime before interpreting relative dates or times."
-                    : SkillLoader.BuildSystemPrompt(effectiveWorkspace, allowedDirectories, _store.Root) +
+                    : SkillLoader.BuildSystemPrompt(effectiveWorkspace, allowedDirectories, _store.Root, skillSelection) +
                       BuildProjectDeliveryInstructions(project) +
-                      MultiAgentInstructions +
+                      (toolPlan?.Includes("delegate_task") == true ? MultiAgentInstructions : "") +
                       GeneralInteractionInstructions;
             if (agentContext.Length > 0) instructions += BuildPrivateAgentContext(agentContext);
 
@@ -725,11 +743,15 @@ public sealed class LlmHarness : IAsyncDisposable
             var agent = chatClient.AsAIAgent(options);
             var messages = setupMode
                 ? new List<AgentChatMessage> { new(ChatRole.User, prompt) }
-                : BuildHistory(_sessions.Messages(sessionId), settings);
+                : BuildHistory(sessionHistory, settings);
             var answer = new StringBuilder();
             var toolNames = new Dictionary<string, string>(StringComparer.Ordinal);
+            var pendingTools = new Queue<(string CallId, string Name)>();
+            var resolvedToolCalls = new HashSet<string>(StringComparer.Ordinal);
+            var executedToolNames = new List<string>();
             var progressGuard = new AgentProgressGuard();
             var verifiedSkillGuidance = false;
+            var installSkillCalled = false;
 
             onEvent?.Invoke(new ChatRunEvent("status", "Microsoft Agent Framework 실행 중…", sessionId));
             try
@@ -746,7 +768,14 @@ public sealed class LlmHarness : IAsyncDisposable
                                 onEvent?.Invoke(new ChatRunEvent("reasoning", reasoning.Text, sessionId));
                                 break;
                             case FunctionCallContent call:
+                                var isNewCall = string.IsNullOrWhiteSpace(call.CallId) || !toolNames.ContainsKey(call.CallId);
                                 if (!string.IsNullOrWhiteSpace(call.CallId)) toolNames[call.CallId] = call.Name;
+                                if (isNewCall)
+                                {
+                                    pendingTools.Enqueue((call.CallId ?? "", call.Name));
+                                    executedToolNames.Add(call.Name);
+                                    if (call.Name.Equals("install_skill", StringComparison.Ordinal)) installSkillCalled = true;
+                                }
                                 if (progressGuard.ObserveToolCall(call.CallId, call.Name, call.Arguments))
                                 {
                                     onEvent?.Invoke(new ChatRunEvent("status", "같은 도구 호출 반복을 감지해 실행을 중단했습니다.", sessionId));
@@ -761,14 +790,20 @@ public sealed class LlmHarness : IAsyncDisposable
                                 }
                                 break;
                             case FunctionResultContent functionResult:
-                                var name = !string.IsNullOrWhiteSpace(functionResult.CallId) &&
-                                           toolNames.TryGetValue(functionResult.CallId, out var toolName)
-                                    ? toolName : "도구";
-                                if (name.Equals("install_skill", StringComparison.Ordinal) &&
+                                var name = ResolveToolResultName(
+                                    functionResult.CallId, toolNames, pendingTools, resolvedToolCalls);
+                                if ((name.Equals("install_skill", StringComparison.Ordinal) ||
+                                     (installSkillCalled && name.Equals("tool", StringComparison.Ordinal))) &&
                                     functionResult.Exception is null && IsVerifiedSkillGuidance(functionResult.Result))
                                     verifiedSkillGuidance = true;
                                 if (!IsOnboardingTool(name))
                                     onEvent?.Invoke(new ChatRunEvent("tool_result", FormatToolResult(name, functionResult), sessionId, functionResult.CallId));
+                                if (progressGuard.ObserveToolResult(functionResult.Result, functionResult.Exception))
+                                {
+                                    onEvent?.Invoke(new ChatRunEvent("status", "도구 결과가 같은 실패를 반복해 실행을 중단했습니다.", sessionId));
+                                    throw new LlmUnavailableException(
+                                        "도구가 같은 종류의 실패를 네 번 연속 반환해 안전하게 중단했습니다. 현재 결과를 확인한 뒤 다른 방법으로 다시 요청해 주세요.");
+                                }
                                 break;
                         }
                     }
@@ -787,7 +822,8 @@ public sealed class LlmHarness : IAsyncDisposable
                     if (!setupMode)
                         _sessions.Append(sessionId, new StoredChatMessage
                         {
-                            Role = "assistant", Text = partial, CreatedAt = DateTimeOffset.UtcNow
+                            Role = "assistant", Text = partial, CreatedAt = DateTimeOffset.UtcNow,
+                            Execution = ExecutionSummary(executedToolNames, skillSelection, "cancelled")
                         });
                 }
                 throw;
@@ -809,7 +845,8 @@ public sealed class LlmHarness : IAsyncDisposable
             if (!setupMode)
                 _sessions.Append(sessionId, new StoredChatMessage
                 {
-                    Role = "assistant", Text = result, CreatedAt = DateTimeOffset.UtcNow
+                    Role = "assistant", Text = result, CreatedAt = DateTimeOffset.UtcNow,
+                    Execution = ExecutionSummary(executedToolNames, skillSelection, "completed")
                 });
             _ = _projects.List(settings.WorkspacePath);
             return new ChatRunResult(sessionId, result);
@@ -928,6 +965,42 @@ public sealed class LlmHarness : IAsyncDisposable
             projectSetup: false, allowBackgroundAutomation: false, serializeRun: false, sessionTitle: task.Name);
     }
 
+    private static string BuildRoutingContext(IReadOnlyList<StoredChatMessage> history) =>
+        string.Join('\n', history
+            .Where(message => message.Role == "user")
+            .TakeLast(4)
+            .Select(message => message.Text));
+
+    private static AgentExecutionSummary ExecutionSummary(
+        IReadOnlyList<string> tools, SkillSelection selection, string outcome) => new()
+    {
+        Tools = tools.Take(40).ToList(),
+        Skills = selection.Selected.Select(skill => skill.Name).ToList(),
+        Outcome = outcome
+    };
+
+    private static string ResolveToolResultName(
+        string? callId,
+        IReadOnlyDictionary<string, string> toolNames,
+        Queue<(string CallId, string Name)> pendingTools,
+        ISet<string> resolvedToolCalls)
+    {
+        if (!string.IsNullOrWhiteSpace(callId) && toolNames.TryGetValue(callId, out var exact))
+        {
+            resolvedToolCalls.Add(callId);
+            return exact;
+        }
+
+        while (pendingTools.Count > 0)
+        {
+            var pending = pendingTools.Dequeue();
+            if (pending.CallId.Length > 0 && resolvedToolCalls.Contains(pending.CallId)) continue;
+            if (pending.CallId.Length > 0) resolvedToolCalls.Add(pending.CallId);
+            return pending.Name;
+        }
+        return "tool";
+    }
+
     private static List<AgentChatMessage> BuildHistory(IReadOnlyList<StoredChatMessage> history, AppSettings settings)
     {
         var characterBudget = settings.ContextWindowTokens > 0
@@ -942,9 +1015,20 @@ public sealed class LlmHarness : IAsyncDisposable
             selected.Push(message);
             used += message.Text.Length;
         }
-        return selected.Select(message => new AgentChatMessage(
-            message.Role == "user" ? ChatRole.User : ChatRole.Assistant,
-            message.Text)).ToList();
+        return selected.Select(message =>
+        {
+            var text = message.Text;
+            if (message.Role != "user" && message.Execution is { } execution &&
+                (execution.Tools.Count > 0 || execution.Skills.Count > 0))
+            {
+                var tools = execution.Tools.Count == 0 ? "none" : string.Join(" -> ", execution.Tools);
+                var skills = execution.Skills.Count == 0 ? "none" : string.Join(", ", execution.Skills);
+                text += $"\n\n<execution-summary outcome=\"{execution.Outcome}\" tools=\"{tools}\" skills=\"{skills}\" />";
+            }
+            return new AgentChatMessage(
+                message.Role == "user" ? ChatRole.User : ChatRole.Assistant,
+                text);
+        }).ToList();
     }
 
     private static string TitleFrom(string prompt)
@@ -1013,19 +1097,46 @@ public sealed class LlmHarness : IAsyncDisposable
               "따라서 Skill 지침 등록도 완료된 것으로 볼 수 없습니다.";
     }
 
-    private static bool IsVerifiedSkillGuidance(object? value)
+    internal static bool IsVerifiedSkillGuidance(object? value)
     {
         if (value is null) return false;
-        var json = value as string ?? JsonSerializer.Serialize(value);
         try
         {
-            using var document = JsonDocument.Parse(json);
-            var root = document.RootElement;
-            return root.ValueKind == JsonValueKind.Object &&
-                   root.TryGetProperty("registered", out var registered) && registered.ValueKind == JsonValueKind.True &&
-                   root.TryGetProperty("verified", out var verified) && verified.ValueKind == JsonValueKind.True;
+            var json = value is JsonElement element ? element.GetRawText() : value as string ?? JsonSerializer.Serialize(value);
+            for (var depth = 0; depth < 3; depth++)
+            {
+                using var document = JsonDocument.Parse(json);
+                var root = document.RootElement;
+                if (ContainsVerifiedSkillResult(root)) return true;
+                if (root.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(root.GetString()))
+                {
+                    json = root.GetString()!;
+                    continue;
+                }
+                return false;
+            }
+            return false;
         }
         catch (JsonException) { return false; }
+    }
+
+    private static bool ContainsVerifiedSkillResult(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            if (element.TryGetProperty("registered", out var registered) && registered.ValueKind == JsonValueKind.True &&
+                element.TryGetProperty("verified", out var verified) && verified.ValueKind == JsonValueKind.True)
+                return true;
+            foreach (var property in element.EnumerateObject())
+                if ((property.Name is "result" or "value" or "content") && ContainsVerifiedSkillResult(property.Value))
+                    return true;
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in element.EnumerateArray())
+                if (ContainsVerifiedSkillResult(item)) return true;
+        }
+        return false;
     }
 
     private static string FormatToolCall(FunctionCallContent call)

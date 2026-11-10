@@ -177,6 +177,18 @@ public sealed class ChatMessage
     public string Role { get; init; } = "assistant";
     public string Text { get; init; } = "";
     public DateTimeOffset CreatedAt { get; init; }
+    public AgentExecutionSummary? Execution { get; init; }
+}
+
+/// <summary>
+/// Compact, non-secret execution telemetry. It intentionally stores tool names and
+/// selected skill names only, never hidden reasoning, arguments, command text, or results.
+/// </summary>
+public sealed class AgentExecutionSummary
+{
+    public IReadOnlyList<string> Tools { get; init; } = [];
+    public IReadOnlyList<string> Skills { get; init; } = [];
+    public string Outcome { get; init; } = "completed";
 }
 
 public sealed record ChatRunEvent(

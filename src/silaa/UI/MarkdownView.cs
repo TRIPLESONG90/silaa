@@ -189,48 +189,6 @@ internal sealed class MarkdownView
             pendingBreaks = 1;
         }
 
-        void AppendTableRow(IReadOnlyList<string> cells, bool header)
-        {
-            StartContentLine();
-            document.Inlines!.Add(new Run("| ")
-            {
-                FontFamily = Palette.Mono,
-                FontSize = 12,
-                Foreground = Palette.Muted
-            });
-            for (var column = 0; column < cells.Count; column++)
-            {
-                document.Inlines.Add(new Run(cells[column])
-                {
-                    FontSize = header ? 11.5 : 12,
-                    FontWeight = header ? FontWeight.SemiBold : FontWeight.Normal,
-                    Foreground = _foreground,
-                    Background = header ? Palette.Raised : Brushes.Transparent
-                });
-                document.Inlines.Add(new Run(column == cells.Count - 1 ? " |" : " | ")
-                {
-                    FontFamily = Palette.Mono,
-                    FontSize = 12,
-                    Foreground = Palette.Muted
-                });
-            }
-            hasContent = true;
-            pendingBreaks = 1;
-        }
-
-        void AppendTableSeparator(int columns)
-        {
-            StartContentLine();
-            document.Inlines!.Add(new Run("| " + string.Join(" | ", Enumerable.Repeat("---", columns)) + " |")
-            {
-                FontFamily = Palette.Mono,
-                FontSize = 11,
-                Foreground = Palette.Divider
-            });
-            hasContent = true;
-            pendingBreaks = 1;
-        }
-
         void FlushDocument()
         {
             if (!hasContent) return;
@@ -286,23 +244,8 @@ internal sealed class MarkdownView
 
             if (IsTableStart(lines, index))
             {
-                var headers = TableCells(lines[index]);
-                index += 2;
-                var rows = new List<string[]>();
-                while (index < lines.Length && LooksLikeTableRow(lines[index]))
-                {
-                    rows.Add(TableCells(lines[index]));
-                    index++;
-                }
-                var columnCount = Math.Max(1,
-                    Math.Max(headers.Length, rows.Count == 0 ? 0 : rows.Max(row => row.Length)));
-                static string[] NormalizeRow(string[] row, int count) =>
-                    Enumerable.Range(0, count).Select(column => column < row.Length ? row[column] : "").ToArray();
-                if (hasContent) pendingBreaks = Math.Max(pendingBreaks, 2);
-                AppendTableRow(NormalizeRow(headers, columnCount), header: true);
-                AppendTableSeparator(columnCount);
-                foreach (var row in rows) AppendTableRow(NormalizeRow(row, columnCount), header: false);
-                pendingBreaks = Math.Max(pendingBreaks, 2);
+                FlushDocument();
+                target.Children.Add(TableBlock(lines, ref index));
                 continue;
             }
 
@@ -511,7 +454,9 @@ internal sealed class MarkdownView
 
     private Control TableBlock(string[] lines, ref int index)
     {
+        var tableStart = index;
         var headers = TableCells(lines[index]);
+        var separators = TableCells(lines[index + 1]);
         index += 2;
         var rows = new List<string[]> { headers };
         while (index < lines.Length && LooksLikeTableRow(lines[index]))
@@ -534,6 +479,9 @@ internal sealed class MarkdownView
                 var cellText = InlineText(value, rowIndex == 0 ? 11.5 : 12, rowIndex == 0 ? FontWeight.SemiBold : FontWeight.Normal);
                 cellText.MinWidth = 110;
                 cellText.MaxWidth = 320;
+                cellText.TextAlignment = columnIndex < separators.Length
+                    ? TableAlignment(separators[columnIndex])
+                    : TextAlignment.Left;
                 var cell = new Border
                 {
                     Child = cellText,
@@ -547,6 +495,35 @@ internal sealed class MarkdownView
                 grid.Children.Add(cell);
             }
         }
+        var tableMarkdown = string.Join('\n', lines[tableStart..index]);
+        var label = new TextBlock
+        {
+            Text = "TABLE",
+            FontFamily = Palette.Mono,
+            FontSize = 9.5,
+            FontWeight = FontWeight.SemiBold,
+            Foreground = Palette.Muted,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        var copy = Palette.SmallButton("복사");
+        copy.Click += async (_, _) => await Palette.CopyAsync(copy, tableMarkdown);
+        var header = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,Auto"),
+            Margin = new Thickness(10, 5, 7, 5)
+        };
+        header.Children.Add(label);
+        Grid.SetColumn(copy, 1);
+        header.Children.Add(copy);
+        var content = new StackPanel { Spacing = 0 };
+        content.Children.Add(header);
+        content.Children.Add(new Border { Height = 1, Background = Palette.Divider });
+        content.Children.Add(new ScrollViewer
+        {
+            Content = grid,
+            HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled
+        });
         return new Border
         {
             Background = Palette.Panel,
@@ -554,13 +531,16 @@ internal sealed class MarkdownView
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(8),
             ClipToBounds = true,
-            Child = new ScrollViewer
-            {
-                Content = grid,
-                HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
-                VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled
-            }
+            Child = content
         };
+    }
+
+    private static TextAlignment TableAlignment(string separator)
+    {
+        var value = separator.Trim();
+        if (value.StartsWith(':') && value.EndsWith(':')) return TextAlignment.Center;
+        if (value.EndsWith(':')) return TextAlignment.Right;
+        return TextAlignment.Left;
     }
 
     private SelectableTextBlock InlineText(string text, double fontSize, FontWeight weight, IBrush? foreground = null)

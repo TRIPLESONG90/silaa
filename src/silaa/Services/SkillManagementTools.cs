@@ -33,17 +33,27 @@ internal sealed class SkillManagementTools(
             "Create a project-local skill, or update it only when overwrite is true. The skill becomes available on the next Agent run."),
         AIFunctionFactory.Create((Func<string, string>)ValidateSkill, "validate_skill",
             "Validate the structure, frontmatter, naming, and unfinished placeholders of one project-local skill."),
+        AIFunctionFactory.Create((Func<string, string>)ReadSkill, "read_skill",
+            "Load the full SKILL.md guidance for one skill from the compact catalog when it is needed for the current request."),
         AIFunctionFactory.Create((Func<string, string, string>)ReadSkillReference, "read_skill_reference",
             "Read a text reference named by an available Skill, such as references/setup.md. " +
             "Use this whenever Skill instructions link to a relative reference instead of claiming that the reference is unavailable."),
         AIFunctionFactory.Create((Func<string, string, string, bool, CancellationToken, Task<string>>)InstallSkillAsync,
             "install_skill",
-            "Register and verify Agent guidance from an allowed local folder, GitHub URL, direct ZIP/SKILL.md URL, " +
+            "Register and verify Agent guidance from an allowed local folder, GitHub or GitLab repository/folder URL, " +
+            "direct ZIP/TAR.GZ/SKILL.md URL, " +
             "or an HTTP(S) Skill guide page. A guide page without a package link is converted into a validated SKILL.md. " +
             "Use project scope by default. Use global or overwrite only when the user explicitly requests it. " +
             "This only registers guidance: it never installs dependencies, executes scripts, logs in, or configures an SDK. " +
             "Never describe those actions as completed. Never claim registration success unless verified is true.")
     ];
+
+    public string ReadSkill(
+        [Description("Installed Skill folder name from the available skill catalog.")] string skill)
+    {
+        var content = SkillLoader.ReadSkill(skill, workspace, dataRoot);
+        return content.Length == 0 ? $"Skill '{skill}' was not found." : content;
+    }
 
     public string ReadSkillReference(
         [Description("Installed Skill folder name, for example dlstudio.")] string skill,
@@ -51,7 +61,7 @@ internal sealed class SkillManagementTools(
         SkillLoader.ReadSkillReference(skill, path, workspace, dataRoot);
 
     public async Task<string> InstallSkillAsync(
-        [Description("Allowed local folder, local SKILL.md path, GitHub URL, direct Skill ZIP/SKILL.md URL, or a Skill guide web page URL.")] string source,
+        [Description("Allowed local folder, local SKILL.md path, GitHub/GitLab URL, direct Skill ZIP/TAR.GZ/SKILL.md URL, or a Skill guide web page URL.")] string source,
         [Description("Optional folder containing SKILL.md relative to the source repository or folder.")] string subpath = "",
         [Description("Install scope: project or global. Prefer project.")] string scope = "project",
         [Description("Replace an installed Skill with the same name. Use only after an explicit update or overwrite request.")] bool overwrite = false,

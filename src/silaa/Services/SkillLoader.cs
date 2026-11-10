@@ -1,10 +1,13 @@
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace silaa.Services;
 
 internal static class SkillLoader
 {
-    private const int MaximumCharacters = 120_000;
+    private const int MaximumCatalogCharacters = 24_000;
+    private const int MaximumSelectedSkillCharacters = 60_000;
+    private const int MaximumSelectedSkills = 3;
     private static readonly HashSet<string> ExcludedCodexSkills = new(StringComparer.OrdinalIgnoreCase)
     {
         "vibe-memory", "imagegen", "openai-docs", "skill-installer"
@@ -13,7 +16,16 @@ internal static class SkillLoader
     public static string BuildSystemPrompt(
         string workspace,
         IReadOnlyList<string>? allowedDirectories = null,
-        string? dataRoot = null)
+        string? dataRoot = null,
+        string? requestContext = null)
+        => BuildSystemPrompt(workspace, allowedDirectories, dataRoot,
+            SelectRelevantSkills(workspace, dataRoot, requestContext));
+
+    internal static string BuildSystemPrompt(
+        string workspace,
+        IReadOnlyList<string>? allowedDirectories,
+        string? dataRoot,
+        SkillSelection selection)
     {
         var builder = new StringBuilder();
         var system = FindBundledFile("prompts", "system.md");
@@ -29,22 +41,57 @@ internal static class SkillLoader
             foreach (var directory in allowed) builder.AppendLine($"- {directory}");
             builder.AppendLine("Absolute file-tool paths are permitted only inside the workspace or these roots. Do not access any other folder.");
         }
-        builder.AppendLine().AppendLine("# Available skills");
-
-        foreach (var file in SkillFiles(workspace, dataRoot))
+        builder.AppendLine().AppendLine("# Available skills (catalog)");
+        builder.AppendLine("Only the compact catalog is listed by default. Full guidance is included below only for skills relevant to the current request.");
+        foreach (var skill in selection.Catalog)
         {
-            if (builder.Length >= MaximumCharacters) break;
-            try
+            if (builder.Length >= MaximumCatalogCharacters) break;
+            builder.Append("- ").Append(skill.Name);
+            if (!string.IsNullOrWhiteSpace(skill.Description))
+                builder.Append(": ").Append(skill.Description);
+            builder.AppendLine();
+        }
+
+        if (selection.Selected.Count > 0)
+        {
+            builder.AppendLine().AppendLine("# Skills selected for this request");
+            var selectedCharacters = 0;
+            foreach (var skill in selection.Selected)
             {
-                var text = File.ReadAllText(file);
-                var remaining = MaximumCharacters - builder.Length;
-                if (text.Length > remaining) text = text[..remaining];
-                builder.AppendLine().AppendLine($"<skill source=\"{Path.GetFileName(Path.GetDirectoryName(file))}\">");
+                if (selectedCharacters >= MaximumSelectedSkillCharacters) break;
+                var remaining = MaximumSelectedSkillCharacters - selectedCharacters;
+                var text = skill.Content.Length > remaining ? skill.Content[..remaining] : skill.Content;
+                builder.AppendLine().AppendLine($"<skill source=\"{skill.Name}\">");
                 builder.AppendLine(text).AppendLine("</skill>");
+                selectedCharacters += text.Length;
             }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
         }
         return builder.ToString();
+    }
+
+    internal static SkillSelection SelectRelevantSkills(
+        string workspace, string? dataRoot, string? requestContext)
+    {
+        var catalog = SkillFiles(workspace, dataRoot)
+            .Select(ReadDescriptor)
+            .Where(skill => skill is not null)
+            .Cast<SkillDescriptor>()
+            .GroupBy(skill => skill.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToList();
+        if (string.IsNullOrWhiteSpace(requestContext)) return new SkillSelection(catalog, []);
+
+        var context = requestContext.Trim();
+        var contextTokens = Tokens(context).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var selected = catalog
+            .Select(skill => (Skill: skill, Score: RelevanceScore(skill, context, contextTokens)))
+            .Where(candidate => candidate.Score > 0)
+            .OrderByDescending(candidate => candidate.Score)
+            .ThenBy(candidate => candidate.Skill.Name, StringComparer.OrdinalIgnoreCase)
+            .Take(MaximumSelectedSkills)
+            .Select(candidate => candidate.Skill)
+            .ToList();
+        return new SkillSelection(catalog, selected);
     }
 
     public static string ReadSkill(string name, string workspace, string? dataRoot = null)
@@ -65,6 +112,11 @@ internal static class SkillLoader
                 if (File.Exists(file)) return File.ReadAllText(file);
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { }
+        }
+        foreach (var file in SkillFiles(workspace, dataRoot))
+        {
+            var skill = ReadDescriptor(file);
+            if (skill?.Name.Equals(name, StringComparison.OrdinalIgnoreCase) == true) return skill.Content;
         }
         return "";
     }
@@ -95,21 +147,75 @@ internal static class SkillLoader
         throw new FileNotFoundException($"Reference '{relativePath}' was not found in Skill '{name}'.");
     }
 
+    private static SkillDescriptor? ReadDescriptor(string file)
+    {
+        try
+        {
+            var content = File.ReadAllText(file);
+            var fallbackName = Path.GetFileName(Path.GetDirectoryName(file)) ?? Path.GetFileNameWithoutExtension(file);
+            var name = FrontmatterValue(content, "name") ?? fallbackName;
+            var description = FrontmatterValue(content, "description") ?? FirstDescription(content);
+            return new SkillDescriptor(name.Trim(), description.Trim(), file, content);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    private static int RelevanceScore(SkillDescriptor skill, string context, HashSet<string> contextTokens)
+    {
+        var score = 0;
+        if (context.Contains(skill.Name, StringComparison.OrdinalIgnoreCase) ||
+            context.Contains(skill.Name.Replace('-', ' '), StringComparison.OrdinalIgnoreCase))
+            score += 100;
+        foreach (var token in Tokens(skill.Name))
+            if (contextTokens.Contains(token)) score += 12;
+        foreach (var token in Tokens(skill.Description).Distinct(StringComparer.OrdinalIgnoreCase).Take(40))
+            if (contextTokens.Contains(token)) score += 3;
+        return score;
+    }
+
+    private static IEnumerable<string> Tokens(string value) =>
+        Regex.Matches(value.ToLowerInvariant(), @"[\p{L}\p{N}][\p{L}\p{N}_-]{1,}")
+            .Select(match => match.Value)
+            .Where(token => token is not ("the" or "and" or "for" or "with" or "from" or "skill" or "agent" or "use" or "using" or "this" or "that"));
+
+    private static string? FrontmatterValue(string content, string key)
+    {
+        if (!content.StartsWith("---", StringComparison.Ordinal)) return null;
+        var end = content.IndexOf("\n---", 3, StringComparison.Ordinal);
+        if (end < 0) return null;
+        var match = Regex.Match(content[..end], $@"(?im)^\s*{Regex.Escape(key)}\s*:\s*[""']?(?<value>.*?)[""']?\s*$");
+        return match.Success ? match.Groups["value"].Value.Trim().Trim('"', '\'') : null;
+    }
+
+    private static string FirstDescription(string content)
+    {
+        foreach (var line in content.Replace("\r", "").Split('\n'))
+        {
+            var text = line.Trim();
+            if (text.Length == 0 || text is "---" || text.StartsWith('#') || text.Contains(':')) continue;
+            return text.Length > 240 ? text[..240] : text;
+        }
+        return "Task-specific guidance.";
+    }
+
     private static IEnumerable<string> SkillFiles(string workspace, string? dataRoot)
     {
         var seen = new HashSet<string>(OperatingSystem.IsWindows()
             ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
 
-        var bundled = FindBundledDirectory("skills");
-        if (bundled is not null)
-            foreach (var file in DirectSkills(bundled))
-                if (seen.Add(Path.GetFullPath(file))) yield return file;
+        foreach (var file in DirectSkills(Path.Combine(Path.GetFullPath(workspace), ".silaa", "skills")))
+            if (seen.Add(Path.GetFullPath(file))) yield return file;
 
         foreach (var file in DirectSkills(Path.Combine(Path.GetFullPath(dataRoot ?? AppPaths.DataRoot), "skills")))
             if (seen.Add(Path.GetFullPath(file))) yield return file;
 
-        foreach (var file in DirectSkills(Path.Combine(Path.GetFullPath(workspace), ".silaa", "skills")))
-            if (seen.Add(Path.GetFullPath(file))) yield return file;
+        var bundled = FindBundledDirectory("skills");
+        if (bundled is not null)
+            foreach (var file in DirectSkills(bundled))
+                if (seen.Add(Path.GetFullPath(file))) yield return file;
 
         var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         foreach (var file in DirectSkills(Path.Combine(home, ".claude", "skills")))
@@ -167,4 +273,11 @@ internal static class SkillLoader
         }
         return null;
     }
+}
+
+internal sealed record SkillDescriptor(string Name, string Description, string File, string Content);
+internal sealed record SkillSelection(IReadOnlyList<SkillDescriptor> Catalog, IReadOnlyList<SkillDescriptor> Selected)
+{
+    public static SkillSelection Empty { get; } = new([], []);
+    public string SelectedContent => string.Join("\n", Selected.Select(skill => skill.Content));
 }

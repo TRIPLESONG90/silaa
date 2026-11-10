@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Formats.Tar;
 using System.IO.Compression;
 using System.Net;
 using System.Net.Http.Headers;
@@ -45,6 +46,13 @@ internal sealed partial class SkillInstallerService
         uri.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase) &&
         uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase);
 
+    public static bool IsGitLabSource(string source) =>
+        Uri.TryCreate(source.Trim(), UriKind.Absolute, out var uri) &&
+        uri.Scheme is "http" or "https" &&
+        uri.Host.Contains("gitlab", StringComparison.OrdinalIgnoreCase) &&
+        uri.UserInfo.Length == 0 &&
+        uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries).Length >= 2;
+
     public static bool IsWebSource(string source) =>
         Uri.TryCreate(source.Trim(), UriKind.Absolute, out var uri) &&
         uri.Scheme is "http" or "https" &&
@@ -85,6 +93,19 @@ internal sealed partial class SkillInstallerService
                 await CloneAsync(github, checkout, cancellationToken);
                 skillDirectory = ResolveSubpath(checkout, github.Subpath);
                 sourceLabel = github.DisplaySource;
+            }
+            else if (IsGitLabSource(source))
+            {
+                var gitlab = ParseGitLabSource(source, subpath);
+                var networkDecision = _security?.InspectNetworkUri(gitlab.ArchiveUri, "skill.install");
+                if (networkDecision is { Allowed: false })
+                    throw new InvalidOperationException(networkDecision.Message);
+                temporaryRoot = Path.Combine(Path.GetTempPath(), $"silaa-skill-{Guid.NewGuid():N}");
+                Directory.CreateDirectory(temporaryRoot);
+                var downloaded = await DownloadWebSkillAsync(
+                    gitlab.ArchiveUri, temporaryRoot, gitlab.Subpath, cancellationToken);
+                skillDirectory = ResolveSubpath(downloaded.Directory, gitlab.Subpath);
+                sourceLabel = gitlab.DisplaySource;
             }
             else if (IsWebSource(source))
             {
@@ -133,6 +154,14 @@ internal sealed partial class SkillInstallerService
                 explicitSubpath.Length == 0 ? FindSingleSkillDirectory(extracted) : extracted,
                 first.FinalUri);
         }
+        if (LooksLikeTarGzip(first.Bytes))
+        {
+            var extracted = Path.Combine(temporaryRoot, "package");
+            ExtractTarGzip(first.Bytes, extracted);
+            return new WebSkillSource(
+                explicitSubpath.Length == 0 ? FindSingleSkillDirectory(extracted) : extracted,
+                first.FinalUri);
+        }
 
         if (LooksLikeSkillMarkdown(first.MediaType, first.FinalUri, first.Bytes))
         {
@@ -144,7 +173,7 @@ internal sealed partial class SkillInstallerService
 
         if (!first.MediaType.StartsWith("text/html", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException(
-                $"SKILL_FETCH_FAILED: The URL returned unsupported content ({first.MediaType}). Provide a Skill ZIP, SKILL.md, or an HTML page linking to one.");
+                $"SKILL_FETCH_FAILED: The URL returned unsupported content ({first.MediaType}). Provide a Skill ZIP, TAR.GZ, SKILL.md, or an HTML page linking to one.");
 
         var html = DecodeText(first.Bytes, first.Charset);
         var candidate = FindPackageLink(first.FinalUri, html);
@@ -155,6 +184,14 @@ internal sealed partial class SkillInstallerService
         {
             var extracted = Path.Combine(temporaryRoot, "package");
             ExtractZip(package.Bytes, extracted);
+            return new WebSkillSource(
+                explicitSubpath.Length == 0 ? FindSingleSkillDirectory(extracted) : extracted,
+                package.FinalUri);
+        }
+        if (LooksLikeTarGzip(package.Bytes))
+        {
+            var extracted = Path.Combine(temporaryRoot, "package");
+            ExtractTarGzip(package.Bytes, extracted);
             return new WebSkillSource(
                 explicitSubpath.Length == 0 ? FindSingleSkillDirectory(extracted) : extracted,
                 package.FinalUri);
@@ -307,6 +344,7 @@ internal sealed partial class SkillInstallerService
             using var request = new HttpRequestMessage(HttpMethod.Get, current);
             request.Headers.UserAgent.ParseAdd("silaa/0.9 (+skill-installer)");
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/zip"));
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/gzip"));
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/markdown"));
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/html"));
             using var response = await client.SendAsync(
@@ -357,7 +395,9 @@ internal sealed partial class SkillInstallerService
             .Where(uri => uri is not null && uri.Scheme is "http" or "https" && uri.UserInfo.Length == 0)
             .Cast<Uri>()
             .Where(uri => uri.AbsolutePath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) ||
+                          uri.AbsolutePath.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase) ||
                           uri.AbsolutePath.EndsWith("SKILL.md", StringComparison.OrdinalIgnoreCase) ||
+                          uri.PathAndQuery.Contains("/-/archive/", StringComparison.OrdinalIgnoreCase) ||
                           (uri.PathAndQuery.Contains("skill", StringComparison.OrdinalIgnoreCase) &&
                            uri.PathAndQuery.Contains("download", StringComparison.OrdinalIgnoreCase)))
             .OrderByDescending(uri => uri.AbsolutePath.Contains("skill", StringComparison.OrdinalIgnoreCase))
@@ -397,6 +437,54 @@ internal sealed partial class SkillInstallerService
         }
     }
 
+    private static void ExtractTarGzip(byte[] bytes, string destination)
+    {
+        Directory.CreateDirectory(destination);
+        using var compressed = new GZipStream(
+            new MemoryStream(bytes, writable: false), CompressionMode.Decompress);
+        using var archive = new TarReader(compressed);
+        var entries = 0;
+        long total = 0;
+        TarEntry? entry;
+        while ((entry = archive.GetNextEntry()) is not null)
+        {
+            entries++;
+            if (entries > MaximumFiles)
+                throw new InvalidOperationException(
+                    $"SKILL_VALIDATION_FAILED: Skill packages can contain at most {MaximumFiles} entries.");
+            if (entry.EntryType is TarEntryType.SymbolicLink or TarEntryType.HardLink)
+                throw new InvalidOperationException(
+                    "SKILL_VALIDATION_FAILED: Skill TAR files cannot contain links.");
+
+            var normalizedName = entry.Name.Replace('\\', '/').TrimStart('/');
+            if (normalizedName.Length == 0) continue;
+            if (normalizedName.Split('/', StringSplitOptions.RemoveEmptyEntries)
+                .Any(part => part is "." or ".."))
+                throw new InvalidOperationException("SKILL_VALIDATION_FAILED: The Skill TAR contains an unsafe path.");
+            var target = Path.GetFullPath(Path.Combine(
+                destination, normalizedName.Replace('/', Path.DirectorySeparatorChar)));
+            if (!FolderAccessPolicy.IsInside(target, destination))
+                throw new InvalidOperationException(
+                    "SKILL_VALIDATION_FAILED: A Skill TAR entry escaped the extraction folder.");
+
+            if (entry.EntryType == TarEntryType.Directory)
+            {
+                Directory.CreateDirectory(target);
+                continue;
+            }
+            if (entry.EntryType is not (TarEntryType.RegularFile or TarEntryType.V7RegularFile or TarEntryType.ContiguousFile))
+                continue;
+
+            total += entry.Length;
+            if (total > MaximumBytes)
+                throw new InvalidOperationException(
+                    "SKILL_VALIDATION_FAILED: Expanded Skill packages can contain at most 50 MB.");
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            using var output = new FileStream(target, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            entry.DataStream?.CopyTo(output);
+        }
+    }
+
     private static string FindSingleSkillDirectory(string extractedRoot)
     {
         var matches = Directory.EnumerateFiles(extractedRoot, "SKILL.md", SearchOption.AllDirectories)
@@ -414,6 +502,9 @@ internal sealed partial class SkillInstallerService
         bytes.Length >= 4 && bytes[0] == (byte)'P' && bytes[1] == (byte)'K' &&
         (bytes[2] == 3 || bytes[2] == 5 || bytes[2] == 7) &&
         bytes[3] is 4 or 6 or 8;
+
+    private static bool LooksLikeTarGzip(byte[] bytes) =>
+        bytes.Length >= 3 && bytes[0] == 0x1F && bytes[1] == 0x8B && bytes[2] == 0x08;
 
     private static bool LooksLikeSkillMarkdown(string mediaType, Uri uri, byte[] bytes)
     {
@@ -634,6 +725,79 @@ internal sealed partial class SkillInstallerService
             subpath.Length == 0 ? repositoryUri.AbsoluteUri : $"{repositoryUri.AbsoluteUri}#{subpath}");
     }
 
+    internal static GitLabSkillSource ParseGitLabSource(string source, string explicitSubpath)
+    {
+        var uri = new Uri(source, UriKind.Absolute);
+        if (uri.UserInfo.Length > 0 || uri.Fragment.Length > 0)
+            throw new ArgumentException("GitLab Skill URLs cannot contain credentials or fragments.");
+        var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries)
+            .Select(Uri.UnescapeDataString).ToArray();
+        var marker = Array.IndexOf(segments, "-");
+        var repositorySegments = (marker < 0 ? segments : segments[..marker]).ToList();
+        if (repositorySegments.Count < 2)
+            throw new ArgumentException("Use a GitLab repository or Skill folder URL.");
+        var repository = repositorySegments[^1].EndsWith(".git", StringComparison.OrdinalIgnoreCase)
+            ? repositorySegments[^1][..^4]
+            : repositorySegments[^1];
+        repositorySegments[^1] = repository;
+        if (repositorySegments.Any(segment => !GitHubPart().IsMatch(segment)))
+            throw new ArgumentException("The GitLab namespace or repository name is invalid.");
+
+        var reference = "main";
+        var embeddedSubpath = "";
+        if (marker >= 0)
+        {
+            if (segments.Length <= marker + 2)
+                throw new ArgumentException("The GitLab repository URL is incomplete.");
+            var action = segments[marker + 1];
+            if (action is "tree" or "blob" or "raw")
+            {
+                reference = segments[marker + 2];
+                var pathSegments = segments.Skip(marker + 3).ToList();
+                if (pathSegments.LastOrDefault()?.Equals("SKILL.md", StringComparison.OrdinalIgnoreCase) == true)
+                    pathSegments.RemoveAt(pathSegments.Count - 1);
+                embeddedSubpath = NormalizeSubpath(string.Join('/', pathSegments));
+            }
+            else if (action.Equals("archive", StringComparison.OrdinalIgnoreCase))
+            {
+                reference = segments[marker + 2];
+                embeddedSubpath = NormalizeSubpath(QueryValue(uri.Query, "path") ?? "");
+            }
+            else
+                throw new ArgumentException(
+                    "Use a GitLab repository URL, /-/tree/<branch>/<folder>, /-/raw/.../SKILL.md, or /-/archive/... URL.");
+        }
+        else if (uri.Query.Length > 0)
+            throw new ArgumentException("GitLab repository URLs cannot contain a query string.");
+
+        if (!GitReference().IsMatch(reference) || reference.StartsWith('-'))
+            throw new ArgumentException("The Git reference in the GitLab URL is invalid.");
+        var subpath = explicitSubpath.Length > 0 ? explicitSubpath : embeddedSubpath;
+        var authority = uri.GetLeftPart(UriPartial.Authority).TrimEnd('/');
+        var repositoryPath = string.Join('/', repositorySegments.Select(Uri.EscapeDataString));
+        var escapedReference = string.Join('/', reference.Split('/').Select(Uri.EscapeDataString));
+        var archiveName = $"{Uri.EscapeDataString(repository)}-{Uri.EscapeDataString(reference.Replace('/', '-'))}.tar.gz";
+        var query = subpath.Length == 0 ? "" : $"?path={Uri.EscapeDataString(subpath)}";
+        var repositoryUri = new Uri($"{authority}/{repositoryPath}.git");
+        var archiveUri = new Uri(
+            $"{authority}/{repositoryPath}/-/archive/{escapedReference}/{archiveName}{query}");
+        return new GitLabSkillSource(
+            repositoryUri, archiveUri, reference, subpath,
+            subpath.Length == 0 ? repositoryUri.AbsoluteUri : $"{repositoryUri.AbsoluteUri}#{subpath}");
+    }
+
+    private static string? QueryValue(string query, string key)
+    {
+        foreach (var pair in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = pair.IndexOf('=');
+            var name = Uri.UnescapeDataString(separator < 0 ? pair : pair[..separator]);
+            if (!name.Equals(key, StringComparison.OrdinalIgnoreCase)) continue;
+            return Uri.UnescapeDataString(separator < 0 ? "" : pair[(separator + 1)..].Replace('+', ' '));
+        }
+        return null;
+    }
+
     private static string ResolveSubpath(string root, string subpath)
     {
         root = Path.GetFullPath(root);
@@ -642,9 +806,25 @@ internal sealed partial class SkillInstallerService
             : Path.GetFullPath(Path.Combine(root, subpath.Replace('/', Path.DirectorySeparatorChar)));
         if (!FolderAccessPolicy.IsInside(resolved, root))
             throw new UnauthorizedAccessException("The Skill subpath must stay inside its source folder.");
-        if (!Directory.Exists(resolved))
-            throw new DirectoryNotFoundException($"Skill folder was not found: {subpath}");
-        return resolved;
+        if (Directory.Exists(resolved)) return resolved;
+        if (File.Exists(Path.Combine(root, "SKILL.md"))) return root;
+        var normalized = subpath.Replace('\\', '/').Trim('/');
+        var suffix = "/" + normalized;
+        var matches = Directory.EnumerateDirectories(root, "*", SearchOption.AllDirectories)
+            .Where(directory =>
+            {
+                var relative = Path.GetRelativePath(root, directory).Replace('\\', '/');
+                return (relative.Equals(normalized, StringComparison.OrdinalIgnoreCase) ||
+                        relative.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)) &&
+                       File.Exists(Path.Combine(directory, "SKILL.md"));
+            }).Take(2).ToList();
+        return matches.Count switch
+        {
+            1 => matches[0],
+            > 1 => throw new InvalidOperationException(
+                $"Multiple Skill folders matched '{subpath}' in the downloaded package."),
+            _ => throw new DirectoryNotFoundException($"Skill folder was not found: {subpath}")
+        };
     }
 
     private static string NormalizeScope(string scope) => scope.Trim().ToLowerInvariant() switch
@@ -728,6 +908,8 @@ internal sealed partial class SkillInstallerService
     private sealed record SkillPackageFile(string SourcePath, string RelativePath, long Length);
     private sealed record GitHubSkillSource(
         Uri RepositoryUri, string Reference, string Subpath, string DisplaySource);
+    internal sealed record GitLabSkillSource(
+        Uri RepositoryUri, Uri ArchiveUri, string Reference, string Subpath, string DisplaySource);
     private sealed record WebSkillSource(string Directory, Uri Source);
     private sealed record WebDownload(Uri FinalUri, string MediaType, string? Charset, byte[] Bytes);
 }

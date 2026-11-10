@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Formats.Tar;
 using System.IO.Compression;
 using System.Net;
 using System.Net.Http.Headers;
@@ -11,6 +12,7 @@ using System.ClientModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Validation;
@@ -914,18 +916,25 @@ Assert(silaa.UI.MainWindow.RestorableWindowState(WindowState.Minimized) == Windo
     "tray restore preserves the last usable window state");
 var richMarkdown = new silaa.UI.MarkdownView(
     "| Name | State |\n| --- | --- |\n| Build | Ready |\n\n> quoted context\n\n- [x] verified\n\n```csharp\nConsole.WriteLine(\"done\");\n```");
-var richSelectionSurfaces = richMarkdown.Root.Children.OfType<Avalonia.Controls.SelectableTextBlock>().ToList();
-var richSelectableText = string.Concat(richSelectionSurfaces
+var richTable = richMarkdown.Root.GetLogicalDescendants().OfType<Grid>()
+    .FirstOrDefault(grid => grid.ColumnDefinitions.Count == 2 && grid.RowDefinitions.Count == 2);
+var richSelectableText = string.Concat(richMarkdown.Root.GetLogicalDescendants()
+    .OfType<Avalonia.Controls.SelectableTextBlock>()
     .SelectMany(block => block.Inlines ?? [])
     .OfType<Avalonia.Controls.Documents.Run>()
     .Select(run => run.Text));
-Assert(richSelectionSurfaces.Count == 1 &&
-       richSelectableText.Contains("| Name | State |") &&
-       richSelectableText.Contains("| Build | Ready |"),
-    "completed Markdown keeps tables and surrounding content in one scroll-selectable copy surface");
-Assert(!richMarkdown.Root.GetLogicalDescendants().OfType<Grid>()
-       .Any(grid => grid.ColumnDefinitions.Count == 2 && grid.RowDefinitions.Count == 2),
-    "completed tables no longer split selection into one control per cell");
+Assert(richTable is not null && richSelectableText.Contains("Name") && richSelectableText.Contains("Ready"),
+    "completed Markdown renders pipe tables as a structured selectable grid");
+Assert(richMarkdown.Root.GetLogicalDescendants().OfType<Button>()
+       .Any(button => button.Content?.ToString() == "복사"),
+    "rendered tables expose a whole-table copy action");
+var alignedTable = new silaa.UI.MarkdownView(
+    "| 품목 | 현재 재고 | 안전재고 | 상태 |\n| :--- | :---: | :---: | :---: |\n| 베어링 6003-2RS | 7개 | 10개 | **부족** |");
+var alignedCells = alignedTable.Root.GetLogicalDescendants().OfType<Avalonia.Controls.SelectableTextBlock>().ToList();
+Assert(alignedCells.Count >= 8 && alignedCells.Count(cell => cell.TextAlignment == TextAlignment.Center) >= 6 &&
+       alignedTable.Root.GetLogicalDescendants().OfType<Avalonia.Controls.Documents.Run>()
+           .Any(run => run.Text == "부족" && run.FontWeight == FontWeight.SemiBold),
+    "table alignment markers and inline emphasis render correctly in completed answers");
 var chartSource = """
 {"type":"bar","title":"Quarterly revenue","unit":"M","labels":["Q1","Q2","Q3"],"series":[{"name":"Revenue","values":[12,18,24]}]}
 """;
@@ -1285,6 +1294,13 @@ var variedProgressGuard = new AgentProgressGuard();
 Assert(!Enumerable.Range(0, 20).Any(index => variedProgressGuard.ObserveToolCall(
         $"varied-{index}", "read_file", new Dictionary<string, object?> { ["path"] = $"file-{index}.txt" })),
     "long runs with varied tool arguments remain unrestricted");
+var failedProgressGuard = new AgentProgressGuard();
+var repeatedFailureDetected = false;
+for (var index = 0; index < AgentProgressGuard.RepeatedNoProgressResultLimit; index++)
+    repeatedFailureDetected = failedProgressGuard.ObserveToolResult(
+        $"ERROR: probe {index} failed", null);
+Assert(repeatedFailureDetected,
+    "varied calls that return the same failure category are stopped after repeated no-progress results");
 
 var interleavedTimeline = new silaa.UI.AgentRunView();
 interleavedTimeline.AppendAnswer("before tool");
@@ -1728,8 +1744,29 @@ if (OperatingSystem.IsWindows())
         AssertThrows<ArgumentException>(() => skillTools.CreateOrUpdateSkill(
                 "Invalid Name", "Invalid.", "# Invalid", false),
             "skill creator rejects unsafe skill names");
-        Assert(SkillLoader.BuildSystemPrompt(workspace).Contains("Release checks"),
-            "new project-local skill loads into the next Agent system prompt");
+        var compactSkillPrompt = SkillLoader.BuildSystemPrompt(workspace);
+        var selectedSkillPrompt = SkillLoader.BuildSystemPrompt(workspace, requestContext: "run release-checks");
+        Assert(compactSkillPrompt.Contains("release-checks") &&
+               !compactSkillPrompt.Contains("Build the requested configuration.") &&
+               selectedSkillPrompt.Contains("Build the requested configuration."),
+            "skill prompts expose a compact catalog and lazily load only relevant full guidance");
+        var inventorySkillDirectory = Path.Combine(workspace, ".silaa", "skills", "inventory");
+        Directory.CreateDirectory(inventorySkillDirectory);
+        File.WriteAllText(Path.Combine(inventorySkillDirectory, "SKILL.md"),
+            "---\nname: inventory\ndescription: \"재고와 품목을 조회하는 로컬 Python 도구\"\n---\n\n# Inventory\n\nRun the existing Python query once and report UTF-8 output.\n",
+            Encoding.UTF8);
+        var inventorySelection = SkillLoader.SelectRelevantSkills(
+            workspace, root, "inventory 스킬 설치\n베어링 재고 뭐뭐 있어");
+        var inventoryPlan = HarnessToolRouter.Create("베어링 재고 뭐뭐 있어", inventorySelection, true);
+        Assert(inventorySelection.Selected.Any(skill => skill.Name == "inventory") &&
+               inventoryPlan.Includes("run_command") && inventoryPlan.Includes("read_file") &&
+               inventoryPlan.Includes("inspect_python_environment") &&
+               !inventoryPlan.Includes("delegate_task") && !inventoryPlan.Includes("create_cron_job") &&
+               inventoryPlan.Names.Count <= 10,
+            "inventory lookup selects its skill and a small relevant tool set without multi-agent or automation tools");
+        var conversationalPlan = HarnessToolRouter.Create("안녕", SkillSelection.Empty, true);
+        Assert(conversationalPlan.Names.SetEquals(["ask_user_question"]),
+            "ordinary conversation no longer receives the full harness tool catalog");
         var architectureSkill = SkillLoader.ReadSkill("architecture-diagram", workspace, root);
         Assert(architectureSkill.Contains("evidence-based software architecture diagrams") &&
                architectureSkill.Contains("Prefer Mermaid"),
@@ -1761,6 +1798,20 @@ if (OperatingSystem.IsWindows())
             Encoding.UTF8);
         File.WriteAllText(Path.Combine(importSource, "references", "checklist.md"), "# Checklist\n", Encoding.UTF8);
         var installer = new SkillInstallerService(workspace, root);
+        const string gitLabRepository =
+            "http://gitlab.in.dorco.co.kr/machinery3/dlstudio/dlstudio-sdk-python";
+        Assert(SkillInstallerService.IsGitLabSource(gitLabRepository),
+            "self-hosted GitLab repository URLs are recognized as complete Skill package sources");
+        var parsedGitLab = SkillInstallerService.ParseGitLabSource(
+            gitLabRepository, "skills/dlstudio");
+        Assert(parsedGitLab.Reference == "main" && parsedGitLab.Subpath == "skills/dlstudio" &&
+               parsedGitLab.ArchiveUri.AbsoluteUri.Contains("/-/archive/main/", StringComparison.Ordinal) &&
+               parsedGitLab.ArchiveUri.Query.Contains("path=skills%2Fdlstudio", StringComparison.OrdinalIgnoreCase),
+            "GitLab repository plus subpath resolves to a folder-filtered TAR.GZ archive");
+        var parsedGitLabRaw = SkillInstallerService.ParseGitLabSource(
+            gitLabRepository + "/-/raw/main/skills/dlstudio/SKILL.md", "");
+        Assert(parsedGitLabRaw.Reference == "main" && parsedGitLabRaw.Subpath == "skills/dlstudio",
+            "a GitLab raw SKILL.md URL is promoted to the complete Skill folder archive");
         var installedSkill = await installer.InstallAsync(importSource, "", "project", false);
         Assert(installedSkill.Name == "lab-helper" && installedSkill.Verified && installedSkill.FileCount == 2 &&
                File.Exists(Path.Combine(workspace, ".silaa", "skills", "lab-helper", "references", "checklist.md")),
@@ -1772,8 +1823,8 @@ if (OperatingSystem.IsWindows())
             () => installedSkillTools.ReadSkillReference("lab-helper", "../SKILL.md"),
             "Skill reference reads cannot traverse outside the selected Skill folder");
         Assert(SkillLoader.BuildSystemPrompt(workspace, null, root)
-                .Contains("name: python-development", StringComparison.Ordinal),
-            "the bundled Python environment guidance is available to ordinary Agent runs");
+                .Contains("python-development", StringComparison.Ordinal),
+            "the bundled Python environment guidance remains discoverable in the compact catalog");
         await using (var webSkillServer = new MockSkillServer())
         {
             var webInstalledSkill = await installer.InstallAsync(webSkillServer.DocumentationUrl, "", "project", false);
@@ -1790,6 +1841,12 @@ if (OperatingSystem.IsWindows())
                    generatedSkill.Contains("```", StringComparison.Ordinal) &&
                    generatedSkill.Contains(webSkillServer.StandaloneDocumentationUrl, StringComparison.Ordinal),
                 "a standalone Skill guide web page becomes a validated local SKILL.md without requiring a ZIP");
+            var gitLabArchiveSkill = await installer.InstallAsync(
+                webSkillServer.GitLabArchiveUrl, "skills/dlstudio", "project", false);
+            Assert(gitLabArchiveSkill.Name == "dlstudio" && gitLabArchiveSkill.Verified &&
+                   gitLabArchiveSkill.FileCount == 2 &&
+                   File.Exists(Path.Combine(workspace, ".silaa", "skills", "dlstudio", "references", "setup.md")),
+                "a GitLab-style TAR.GZ archive keeps the complete Skill folder and its references");
         }
         var correctedInstallClaim = LlmHarness.EnsureVerifiedSkillInstallClaim(
             "DLStudio 스킬 설치해줘", "DLStudio 에이전트 스킬 설치를 완료했습니다.", verified: false);
@@ -1799,6 +1856,12 @@ if (OperatingSystem.IsWindows())
                clarifiedGuidanceClaim.Contains("Skill 지침 등록 완료", StringComparison.Ordinal) &&
                clarifiedGuidanceClaim.Contains("의존성 설치", StringComparison.Ordinal),
             "Skill claims distinguish verified guidance registration from software or dependency installation");
+        Assert(LlmHarness.IsVerifiedSkillGuidance(new
+               {
+                   result = new { registered = true, verified = true }
+               }) &&
+               LlmHarness.IsVerifiedSkillGuidance("\"{\\\"registered\\\":true,\\\"verified\\\":true}\""),
+            "verified Skill registration survives provider result wrappers and JSON-string encoding");
         await AssertThrowsAsync<InvalidOperationException>(
             () => installer.InstallAsync(importSource, "", "project", false),
             "skill installer refuses implicit replacement");
@@ -1807,8 +1870,9 @@ if (OperatingSystem.IsWindows())
             "skill installer rejects repository subpath traversal");
         var globalSkill = await installer.InstallAsync(importSource, "", "global", false);
         Assert(globalSkill.Scope == "global" &&
-               SkillLoader.BuildSystemPrompt(workspace, null, root).Contains("Follow the lab source."),
-            "global Skill packages load into Agent instructions across projects");
+                SkillLoader.BuildSystemPrompt(workspace, null, root, "use lab-helper")
+                    .Contains("Follow the lab source."),
+            "global Skill packages are selected into Agent instructions across projects when relevant");
         var gitSetup = await scopedTools.RunCommandAsync(
             "git init --quiet; git add probe.txt; git -c user.name=silaa -c user.email=silaa@local commit -m initial --quiet", 20);
         Assert(gitSetup.Contains("Exit code: 0") && scopedTools.GitStatus().StartsWith("##", StringComparison.Ordinal),
@@ -2064,8 +2128,9 @@ if (OperatingSystem.IsWindows())
             "session folder permissions persist independently");
         var saved = await harness.LoadMessagesAsync(run.SessionId);
         Assert(saved.Count == 2 && saved[0].Role == "user" && saved[0].Text == visibleRunPrompt &&
-               !saved[0].Text.Contains("Internal binary handling context") && saved[1].Text == "mock answer",
-            "session messages persist only the user-visible attachment prompt");
+                !saved[0].Text.Contains("Internal binary handling context") && saved[1].Text == "mock answer" &&
+                saved[1].Execution?.Tools.SequenceEqual(["read_file"]) == true,
+            "session messages persist the user-visible prompt plus compact tool-name telemetry without hidden context");
         await harness.MoveSessionToProjectAsync(run.SessionId, projects[0].Id);
         Assert((await harness.ListGeneralSessionsAsync()).Count == 0, "moved session leaves general history");
         Assert((await harness.ListProjectSessionsAsync(projects[0].Id)).Any(session => session.Id == run.SessionId),
@@ -2087,41 +2152,25 @@ if (OperatingSystem.IsWindows())
             Assert(body.GetProperty("presence_penalty").GetDouble() == 0, "presence penalty sent");
             Assert(body.GetProperty("seed").GetInt32() == 0, "seed sent");
             Assert(body.GetProperty("reasoning_effort").GetString() == "high", "reasoning effort sent");
-            Assert(body.GetProperty("tools").GetArrayLength() >= 6, "native tool catalog sent");
+            Assert(body.GetProperty("tools").GetArrayLength() is >= 6 and <= 12,
+                "request-scoped native tool catalog stays compact");
             var toolNames = body.GetProperty("tools").EnumerateArray()
                 .Select(tool => tool.GetProperty("function").GetProperty("name").GetString()).ToHashSet();
-            Assert(toolNames.Contains("start_background_task") && toolNames.Contains("create_cron_job"),
-                "background and cron tools sent to Agent Framework");
-            Assert(toolNames.Contains("create_reminder") && toolNames.Contains("glob_files") &&
-                   toolNames.Contains("apply_edits") && toolNames.Contains("git_status") &&
-                   toolNames.Contains("list_allowed_directories") &&
-                   toolNames.Contains("inspect_python_environment"),
-                "local reminder, discovery, editing, Git, runtime inspection, and access-boundary tools sent to Agent Framework");
-            Assert(toolNames.Contains("create_or_update_skill") && toolNames.Contains("validate_skill") &&
-                   toolNames.Contains("list_local_skills"),
-                "project-local skill creator tools sent to Agent Framework");
-            Assert(toolNames.Contains("request_folder_access"),
-                "interactive folder access request tool sent to Agent Framework");
-            Assert(toolNames.Contains("request_network_access") && toolNames.Contains("security_status") &&
-                   toolNames.Contains("list_security_audit"),
-                "OpenShell-inspired network approval and audit tools sent to Agent Framework");
-            Assert(toolNames.Contains("request_vault_secret"),
-                "secure in-chat Vault input tool sent to Agent Framework");
-            Assert(toolNames.Contains("ask_user_question") && toolNames.Contains("ask_calendar_question") &&
-                   toolNames.Contains("finalize_calendar_event"),
-                "ordinary chat exposes native decision cards and confirmed calendar registration tools");
-            Assert(toolNames.Contains("web_search") && toolNames.Contains("fetch_url"),
-                "native web research tools sent to Agent Framework");
-            Assert(toolNames.Contains("delegate_task") && toolNames.Contains("review_result"),
-                "bounded worker delegation and read-only review tools sent to Agent Framework");
+            Assert(toolNames.Contains("read_file") && toolNames.Contains("glob_files") &&
+                   toolNames.Contains("inspect_file_metadata") && toolNames.Contains("ask_user_question"),
+                "file-reading request receives only the relevant discovery and interaction tools");
+            Assert(!toolNames.Contains("start_background_task") && !toolNames.Contains("create_cron_job") &&
+                   !toolNames.Contains("install_skill") && !toolNames.Contains("web_search") &&
+                   !toolNames.Contains("delegate_task"),
+                "unrelated automation, skill mutation, web, and multi-agent tools stay out of a file-reading turn");
             var system = body.GetProperty("messages")[0].GetProperty("content").GetString() ?? "";
             Assert(system.StartsWith("<|think|>", StringComparison.Ordinal), "Gemma 4 thinking token injected");
             Assert(system.Contains("native coding harness", StringComparison.OrdinalIgnoreCase), "bundled system prompt loaded");
-            Assert(system.Contains("Systematic debugging", StringComparison.OrdinalIgnoreCase), "bundled skills loaded");
-            Assert(system.Contains("Skill creator", StringComparison.OrdinalIgnoreCase) && system.Contains("Release checks"),
-                "bundled skill creator and newly created local skill loaded");
-            Assert(system.Contains("Multi-Agent coordination", StringComparison.Ordinal),
-                "lead Agent receives selective delegation and review guidance");
+            Assert(system.Contains("systematic-debugging", StringComparison.OrdinalIgnoreCase), "bundled skill catalog loaded");
+            Assert(system.Contains("skill-creator", StringComparison.OrdinalIgnoreCase) && system.Contains("release-checks"),
+                "bundled and project-local skills remain discoverable without loading every body");
+            Assert(!system.Contains("Multi-Agent coordination", StringComparison.Ordinal),
+                "multi-agent instructions stay out of turns that did not request delegation");
             Assert(system.Contains("Native user interaction", StringComparison.Ordinal) &&
                    system.Contains("ask_user_question", StringComparison.Ordinal) &&
                    system.Contains("finalize_calendar_event", StringComparison.Ordinal),
@@ -2249,6 +2298,7 @@ sealed class MockSkillServer : IAsyncDisposable
     private readonly CancellationTokenSource _stop = new();
     private readonly Task _loop;
     private readonly byte[] _skillZip;
+    private readonly byte[] _skillTarGzip;
 
     public MockSkillServer()
     {
@@ -2260,15 +2310,40 @@ sealed class MockSkillServer : IAsyncDisposable
             writer.Write("---\nname: web-lab-helper\ndescription: \"Guide a web-delivered practice lab.\"\n---\n\n# Web lab helper\n\nFollow the verified package.\n");
         }
         _skillZip = buffer.ToArray();
+        using var tarBuffer = new MemoryStream();
+        using (var gzip = new GZipStream(tarBuffer, CompressionLevel.SmallestSize, leaveOpen: true))
+        using (var tar = new TarWriter(gzip, leaveOpen: true))
+        {
+            var skill = new PaxTarEntry(
+                TarEntryType.RegularFile,
+                "dlstudio-sdk-python-main/skills/dlstudio/SKILL.md")
+            {
+                DataStream = new MemoryStream(Encoding.UTF8.GetBytes(
+                    "---\nname: dlstudio\ndescription: \"Operate DLStudio through its SDK.\"\n---\n\n# DLStudio\n\nRead [setup](references/setup.md).\n"))
+            };
+            tar.WriteEntry(skill);
+            var setup = new PaxTarEntry(
+                TarEntryType.RegularFile,
+                "dlstudio-sdk-python-main/skills/dlstudio/references/setup.md")
+            {
+                DataStream = new MemoryStream(Encoding.UTF8.GetBytes(
+                    "# Setup\n\nUse the verified Python environment.\n"))
+            };
+            tar.WriteEntry(setup);
+        }
+        _skillTarGzip = tarBuffer.ToArray();
         _listener.Start();
         var port = ((IPEndPoint)_listener.LocalEndpoint).Port;
         DocumentationUrl = $"http://127.0.0.1:{port}/docs/agent-skill/";
         StandaloneDocumentationUrl = $"http://127.0.0.1:{port}/docs/standalone-skill/";
+        GitLabArchiveUrl =
+            $"http://127.0.0.1:{port}/dlstudio-sdk-python-main.tar.gz?path=skills%2Fdlstudio";
         _loop = AcceptAsync();
     }
 
     public string DocumentationUrl { get; }
     public string StandaloneDocumentationUrl { get; }
+    public string GitLabArchiveUrl { get; }
 
     private async Task AcceptAsync()
     {
@@ -2295,13 +2370,18 @@ sealed class MockSkillServer : IAsyncDisposable
             while (!string.IsNullOrEmpty(header = await reader.ReadLineAsync())) { }
             var path = requestLine?.Split(' ', StringSplitOptions.RemoveEmptyEntries).ElementAtOrDefault(1) ?? "/";
             var isZip = path.EndsWith("dlstudio-skill.zip", StringComparison.Ordinal);
+            var isTarGzip = path.Contains("dlstudio-sdk-python-main.tar.gz", StringComparison.Ordinal);
             var isStandalone = path.Contains("standalone-skill", StringComparison.Ordinal);
             var payload = isZip
                 ? _skillZip
+                : isTarGzip
+                    ? _skillTarGzip
                 : isStandalone
                     ? Encoding.UTF8.GetBytes("<html><head><title>DLStudio Agent Skill</title><meta name='description' content='Connect and operate DLStudio safely.'></head><body><h1>Connect to DLStudio</h1><p>Use device authorization.</p><pre><code>dlstudio login</code></pre></body></html>")
                     : Encoding.UTF8.GetBytes("<html><body><a href='/downloads/dlstudio-skill.zip'>Download Agent Skill</a></body></html>");
-            var contentType = isZip ? "application/zip" : "text/html; charset=utf-8";
+            var contentType = isZip
+                ? "application/zip"
+                : isTarGzip ? "application/gzip" : "text/html; charset=utf-8";
             var response = Encoding.ASCII.GetBytes(
                 $"HTTP/1.1 200 OK\r\nContent-Type: {contentType}\r\nContent-Length: {payload.Length}\r\nConnection: close\r\n\r\n");
             await stream.WriteAsync(response);
