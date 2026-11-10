@@ -12,13 +12,29 @@ namespace silaa;
 
 internal static class Program
 {
+    internal static SingleInstanceCoordinator? SingleInstance { get; private set; }
+
     [STAThread]
     public static void Main(string[] args)
     {
         AppDomain.CurrentDomain.UnhandledException += (_, eventArgs) =>
             CrashLog.Write("AppDomain", eventArgs.ExceptionObject as Exception);
         TaskScheduler.UnobservedTaskException += (_, eventArgs) => CrashLog.Write("Task", eventArgs.Exception);
-        AppBuilder.Configure<SilaaApplication>().UsePlatformDetect().StartWithClassicDesktopLifetime(args);
+        using var instance = new SingleInstanceCoordinator();
+        if (!instance.IsPrimary)
+        {
+            _ = instance.SignalPrimaryAsync().GetAwaiter().GetResult();
+            return;
+        }
+        SingleInstance = instance;
+        try
+        {
+            AppBuilder.Configure<SilaaApplication>().UsePlatformDetect().StartWithClassicDesktopLifetime(args);
+        }
+        finally
+        {
+            SingleInstance = null;
+        }
     }
 }
 
@@ -82,6 +98,8 @@ public sealed partial class SilaaApplication : Application
             var harness = new LlmHarness(_store);
             var window = new MainWindow(_store, harness);
             desktop.MainWindow = window;
+            Program.SingleInstance?.SetActivationHandler(() =>
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => window.ShowFromTray()));
             var open = new NativeMenuItem("silaa 열기");
             open.Click += (_, _) => window.ShowFromTray();
             var tasks = new NativeMenuItem("백그라운드 작업 열기");

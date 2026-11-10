@@ -1309,6 +1309,21 @@ catch (ArgumentException) { }
 
 if (OperatingSystem.IsWindows())
 {
+    var instanceKey = "test-" + Guid.NewGuid().ToString("N");
+    using (var primaryInstance = new SingleInstanceCoordinator(instanceKey))
+    using (var secondaryInstance = new SingleInstanceCoordinator(instanceKey))
+    {
+        Assert(primaryInstance.IsPrimary && !secondaryInstance.IsPrimary,
+            "only the first process coordinator owns the application instance");
+        var activation = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        Assert(await secondaryInstance.SignalPrimaryAsync(),
+            "a second launch signals the primary process through the user-scoped pipe");
+        primaryInstance.SetActivationHandler(() => activation.TrySetResult());
+        await activation.Task.WaitAsync(TimeSpan.FromSeconds(3));
+        Assert(activation.Task.IsCompletedSuccessfully,
+            "the primary process receives a pending activation and can restore its existing window");
+    }
+
     var migrationRoot = Path.Combine(Path.GetTempPath(), "silaa-settings-migration-" + Guid.NewGuid().ToString("N"));
     Directory.CreateDirectory(migrationRoot);
     try
