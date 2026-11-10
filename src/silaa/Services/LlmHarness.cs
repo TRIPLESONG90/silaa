@@ -68,6 +68,23 @@ public sealed class LlmHarness : IAsyncDisposable
         '일정 등록|수정'. Call finalize_calendar_event only after '일정 등록'. Pass empty optional automation fields
         when none was accepted. Use ISO 8601 timestamps with the local UTC offset.
         """;
+    private const string GeneralInteractionInstructions = """
+
+        # Native user interaction
+        When continuing requires a user choice, confirmation, preference, or missing value, call
+        ask_user_question instead of asking only in plain text. Use the native card proactively for consequential
+        decisions, destructive actions, alternative approaches, ambiguous requirements, and final confirmation.
+        Offer 2-4 concise, mutually distinct choices whenever useful and keep free-text input available. Ask exactly
+        one decision at a time. Do not call it for rhetorical questions or when the user already supplied a clear
+        answer, and never invent an answer before the tool returns.
+
+        If the user asks to add, save, or register a real-world appointment, event, deadline, or calendar entry, use
+        ask_calendar_question and finalize_calendar_event in the current conversation. Call get_current_datetime
+        before resolving relative dates. Gather title, concrete local start/end time, and any relevant location or
+        notes. Use native calendar question cards for missing values and the final confirmation. Do not create the
+        event until the user explicitly confirms. Never add an alarm or preparation task unless the user accepts it;
+        if accepted, ask for its exact timing/content. Calendar events are not cron schedules.
+        """;
     private const string MultiAgentInstructions = """
 
         # Multi-Agent coordination
@@ -627,6 +644,10 @@ public sealed class LlmHarness : IAsyncDisposable
             foreach (var tool in new DateTimeTools().CreateFunctions()) tools.Add(tool);
             if (!setupMode)
             {
+                foreach (var tool in new UserInteractionTools(
+                             sessionId, _interaction, onEvent, runTimeout).CreateFunctions()) tools.Add(tool);
+                foreach (var tool in new CalendarOnboardingTools(
+                             sessionId, _interaction, _store.Calendar, _automation, onEvent, runTimeout).CreateFunctions()) tools.Add(tool);
                 var projectContextTools = new ProjectContextTools(project?.Id, _store.Resources, _store.Memory);
                 foreach (var tool in projectContextTools.CreateFunctions()) tools.Add(tool);
                 var documentTools = new DocumentTools(
@@ -671,7 +692,8 @@ public sealed class LlmHarness : IAsyncDisposable
                     ? AutomationOnboardingInstructions + $"\nRequested setup: {automationSetup}. Call get_current_datetime before interpreting relative dates or times."
                     : SkillLoader.BuildSystemPrompt(effectiveWorkspace, allowedDirectories, _store.Root) +
                       BuildProjectDeliveryInstructions(project) +
-                      MultiAgentInstructions;
+                      MultiAgentInstructions +
+                      GeneralInteractionInstructions;
             if (agentContext.Length > 0) instructions += BuildPrivateAgentContext(agentContext);
 
             var options = new ChatClientAgentOptions

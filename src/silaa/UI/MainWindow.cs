@@ -69,6 +69,7 @@ public sealed partial class MainWindow : Window
     private bool _scrollToEndScheduled;
     private bool _projectOnboarding;
     private string? _automationOnboardingKind;
+    private bool _activeRunIsCalendarOnboarding;
     private bool _returnToAutomationAfterRun;
     private bool _returnToCalendarAfterRun;
     private ProjectInfo? _createdProjectToOpen;
@@ -1683,6 +1684,7 @@ public sealed partial class MainWindow : Window
             _projectOnboarding = false;
             var automationSetup = _automationOnboardingKind;
             _automationOnboardingKind = null;
+            _activeRunIsCalendarOnboarding = automationSetup == "calendar";
             var result = await _harness.RunAsync(_sessionId, prompt, OnRunEvent, _runCancellation.Token,
                 projectId: _activeProjectId, projectSetup: projectSetup, automationSetup: automationSetup,
                 agentContext: agentContext);
@@ -1723,6 +1725,7 @@ public sealed partial class MainWindow : Window
             _runCancellation = null;
             _streamingView?.Complete();
             _streamingView = null;
+            _activeRunIsCalendarOnboarding = false;
             if (followTail) ScrollToEnd();
         }
     }
@@ -1876,7 +1879,7 @@ public sealed partial class MainWindow : Window
         {
             _toastHost.Show("일정 등록 완료", "내 일정에서 날짜와 세부 내용을 확인할 수 있습니다.", SiStatusTone.Success);
             _viewModel.StatusText = "일정 등록 완료";
-            _returnToCalendarAfterRun = true;
+            _returnToCalendarAfterRun = _activeRunIsCalendarOnboarding;
             return;
         }
         if (item.Kind == "status")
@@ -1971,13 +1974,16 @@ public sealed partial class MainWindow : Window
         var content = new StackPanel { Spacing = 10 };
         content.Children.Add(new TextBlock { Text = request.Title, Foreground = Palette.Accent, FontSize = 11, FontWeight = FontWeight.SemiBold });
         content.Children.Add(new TextBlock { Text = request.Question, FontSize = 15, FontWeight = FontWeight.SemiBold, TextWrapping = TextWrapping.Wrap });
-        var progressLabel = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        progressLabel.Children.Add(new TextBlock { Text = "구체화 지수", Foreground = Palette.Muted, FontSize = 10.5 });
-        var score = new TextBlock { Text = $"{request.SpecificityScore}%", Foreground = Palette.Accent, FontSize = 10.5 };
-        Grid.SetColumn(score, 1);
-        progressLabel.Children.Add(score);
-        content.Children.Add(progressLabel);
-        content.Children.Add(new ProgressBar { Minimum = 0, Maximum = 100, Value = request.SpecificityScore, Height = 5 });
+        if (request.ShowProgress)
+        {
+            var progressLabel = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+            progressLabel.Children.Add(new TextBlock { Text = "구체화 지수", Foreground = Palette.Muted, FontSize = 10.5 });
+            var score = new TextBlock { Text = $"{request.SpecificityScore}%", Foreground = Palette.Accent, FontSize = 10.5 };
+            Grid.SetColumn(score, 1);
+            progressLabel.Children.Add(score);
+            content.Children.Add(progressLabel);
+            content.Children.Add(new ProgressBar { Minimum = 0, Maximum = 100, Value = request.SpecificityScore, Height = 5 });
+        }
         var choices = new WrapPanel { Orientation = Orientation.Horizontal, ItemSpacing = 7, LineSpacing = 7 };
         var input = new TextBox { PlaceholderText = request.Placeholder, MinHeight = 40 };
         AutomationProperties.SetName(input, request.Question);

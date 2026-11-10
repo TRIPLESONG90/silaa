@@ -26,7 +26,7 @@
   </UserControl.Styles>
   <Grid ColumnDefinitions="Auto,*">
     <Border IsVisible="{Binding ShowNavigation}">
-      <ui:SettingsMenuView DataContext="{Binding Navigation}" />
+      <ui:MainMenuView DataContext="{Binding Navigation}" />
     </Border>
     <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled">
       <StackPanel MaxWidth="{DynamicResource SiContentMaxWidth}"

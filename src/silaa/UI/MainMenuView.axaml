@@ -98,6 +98,12 @@
               <TextBlock VerticalAlignment="Center" Text="앱" />
             </StackPanel>
           </Button>
+          <Button Classes="nav-item" Classes.selected="{Binding IsMemory}" Command="{Binding OpenMemoryCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <materialIcons:MaterialIcon Classes="ui-icon" Kind="BookOpenOutline" />
+              <TextBlock VerticalAlignment="Center" Text="기억" />
+            </StackPanel>
+          </Button>
           <Button Classes="nav-item" Classes.selected="{Binding IsPresentationTemplates}" Command="{Binding OpenPresentationTemplatesCommand}">
             <StackPanel Orientation="Horizontal" Spacing="10">
               <materialIcons:MaterialIcon Classes="ui-icon" Kind="FileDocumentOutline" />

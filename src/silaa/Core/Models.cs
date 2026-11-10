@@ -104,6 +104,7 @@ public sealed class ProjectInputRequest
     public IReadOnlyList<string> Options { get; init; } = [];
     public string Placeholder { get; init; } = "직접 입력할 수도 있습니다.";
     public int SpecificityScore { get; init; }
+    public bool ShowProgress { get; init; } = true;
 }
 
 public sealed class FolderAccessRequest

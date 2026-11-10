@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Threading;
 using System.Text;
 
 namespace silaa.UI;
@@ -17,6 +18,7 @@ internal sealed class AgentRunView
     private readonly List<string> _timelineKinds = [];
     private readonly List<MarkdownView> _answerViews = [];
     private readonly StringBuilder _answerText = new();
+    private readonly WaitingIndicator _waiting = new();
     private ReasoningDisclosure? _activeReasoning;
     private MarkdownView? _activeAnswer;
     private bool _answerCopyAdded;
@@ -45,6 +47,7 @@ internal sealed class AgentRunView
 
         var stack = new StackPanel { Spacing = 8 };
         stack.Children.Add(identity);
+        _content.Children.Add(_waiting.Root);
         stack.Children.Add(_content);
         Root = new Border
         {
@@ -59,11 +62,13 @@ internal sealed class AgentRunView
     public Control Root { get; }
     public bool HasAnswer => _answerText.Length > 0;
     public string AnswerText => _answerText.ToString();
+    internal bool IsWaiting => _waiting.IsActive;
     internal IReadOnlyList<string> TimelineKinds => _timelineKinds;
 
     public void AppendReasoning(string text)
     {
         if (string.IsNullOrEmpty(text)) return;
+        StopWaiting();
         FinishAnswerPhase();
         if (_activeReasoning is null)
         {
@@ -82,6 +87,7 @@ internal sealed class AgentRunView
 
     private void BeginActivity(string? id, string text, string kind)
     {
+        StopWaiting();
         FinishReasoningPhase();
         FinishAnswerPhase();
         var (name, detail) = Split(text);
@@ -121,6 +127,7 @@ internal sealed class AgentRunView
     public void AppendAnswer(string text)
     {
         if (string.IsNullOrEmpty(text)) return;
+        StopWaiting();
         if (_activeAnswer is null)
         {
             if (_answerText.Length > 0 && _answerText[^1] != '\n') _answerText.AppendLine().AppendLine();
@@ -133,6 +140,7 @@ internal sealed class AgentRunView
     public void SetFinalAnswer(string text)
     {
         if (string.IsNullOrWhiteSpace(text) || string.Equals(_answerText.ToString(), text, StringComparison.Ordinal)) return;
+        StopWaiting();
         FinishAnswerPhase();
         foreach (var answerView in _answerViews) _content.Children.Remove(answerView.Root);
         _answerViews.Clear();
@@ -150,6 +158,7 @@ internal sealed class AgentRunView
 
     public void ShowError(string text)
     {
+        StopWaiting();
         FinishAnswerPhase();
         if (_answerText.Length > 0 && _answerText[^1] != '\n') _answerText.AppendLine().AppendLine();
         PrepareAnswerSegment();
@@ -161,6 +170,7 @@ internal sealed class AgentRunView
 
     public void AddInteractive(Control control, string kind)
     {
+        StopWaiting();
         FinishReasoningPhase();
         FinishAnswerPhase();
         _content.Children.Add(control);
@@ -169,6 +179,7 @@ internal sealed class AgentRunView
 
     public void MarkInterrupted(string text)
     {
+        StopWaiting();
         FinishReasoningPhase();
         FinishAnswerPhase();
         foreach (var tool in _tools.Values) tool.StopRunning();
@@ -185,6 +196,7 @@ internal sealed class AgentRunView
 
     public void Complete()
     {
+        StopWaiting();
         FinishReasoningPhase();
         FinishAnswerPhase();
         foreach (var tool in _tools.Values) tool.StopRunning();
@@ -244,6 +256,75 @@ internal sealed class AgentRunView
     {
         var lines = text.Replace("\r", "").Split('\n', 2);
         return (string.IsNullOrWhiteSpace(lines[0]) ? "tool" : lines[0].Trim(), lines.Length > 1 ? lines[1].Trim() : "");
+    }
+
+    private void StopWaiting() => _waiting.Stop();
+
+    private sealed class WaitingIndicator
+    {
+        private readonly Avalonia.Controls.Shapes.Path _spinner = new()
+        {
+            Width = 14,
+            Height = 14,
+            Stretch = Stretch.None,
+            Stroke = Palette.Accent,
+            StrokeThickness = 1.8,
+            StrokeLineCap = PenLineCap.Round,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            RenderTransformOrigin = RelativePoint.Center
+        };
+        private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(55) };
+        private double _angle;
+
+        public WaitingIndicator()
+        {
+            var row = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 8,
+                VerticalAlignment = VerticalAlignment.Center,
+                Children =
+                {
+                    _spinner,
+                    new TextBlock
+                    {
+                        Text = "응답 기다리는 중…",
+                        FontSize = 11,
+                        Foreground = Palette.Muted,
+                        VerticalAlignment = VerticalAlignment.Center
+                    }
+                }
+            };
+            Root = new Border
+            {
+                Child = row,
+                Padding = new Thickness(0, 3, 0, 1),
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
+            _timer.Tick += (_, _) =>
+            {
+                _angle = (_angle + 24) % 360;
+                _spinner.RenderTransform = new RotateTransform(_angle);
+            };
+            _spinner.AttachedToVisualTree += (_, _) =>
+            {
+                _spinner.Data ??= Geometry.Parse("M 7 1 A 6 6 0 1 1 1 7");
+                if (IsActive) _timer.Start();
+            };
+            _spinner.DetachedFromVisualTree += (_, _) => _timer.Stop();
+        }
+
+        public Control Root { get; }
+        public bool IsActive { get; private set; } = true;
+
+        public void Stop()
+        {
+            if (!IsActive) return;
+            IsActive = false;
+            _timer.Stop();
+            Root.IsVisible = false;
+        }
     }
 
     /// <summary>

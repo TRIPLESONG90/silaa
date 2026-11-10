@@ -16,7 +16,8 @@ internal sealed class ProjectInteractionBroker
             "프로젝트 구체화", onEvent, cancellationToken);
 
     public async Task<string> RequestAsync(string sessionId, string question, string options, string placeholder,
-        int specificityScore, string title, Action<ChatRunEvent>? onEvent, CancellationToken cancellationToken)
+        int specificityScore, string title, Action<ChatRunEvent>? onEvent, CancellationToken cancellationToken,
+        bool showProgress = true)
     {
         var requestId = $"input_{Guid.NewGuid():N}";
         var completion = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -28,7 +29,8 @@ internal sealed class ProjectInteractionBroker
             Question = question.Trim(),
             Options = options.Split(['|', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
             Placeholder = string.IsNullOrWhiteSpace(placeholder) ? "직접 입력할 수도 있습니다." : placeholder.Trim(),
-            SpecificityScore = Math.Clamp(specificityScore, 0, 100)
+            SpecificityScore = Math.Clamp(specificityScore, 0, 100),
+            ShowProgress = showProgress
         };
         onEvent?.Invoke(new ChatRunEvent("input_request", JsonSerializer.Serialize(request), sessionId, requestId));
         using var registration = cancellationToken.Register(() => completion.TrySetCanceled(cancellationToken));

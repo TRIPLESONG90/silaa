@@ -275,7 +275,7 @@ if (args.Contains("--xaml-smoke", StringComparer.OrdinalIgnoreCase))
             .Where(button => button.Classes.Contains("nav-item") || button.Classes.Contains("new-task"))
             .ToList();
         var menuWidths = menuButtons.Select(button => Math.Round(button.Bounds.Width, 1)).ToList();
-        Assert(menuButtons.Count == 9 && menuButtons.All(button => button.HorizontalAlignment == Avalonia.Layout.HorizontalAlignment.Stretch) &&
+        Assert(menuButtons.Count == 10 && menuButtons.All(button => button.HorizontalAlignment == Avalonia.Layout.HorizontalAlignment.Stretch) &&
                menuWidths.Distinct().Count() == 1,
             $"main sidebar actions share one stretched width: {string.Join(',', menuWidths)}");
         Assert(menu.GetLogicalDescendants().OfType<Material.Icons.Avalonia.MaterialIcon>().Count() >= 7,
@@ -284,6 +284,7 @@ if (args.Contains("--xaml-smoke", StringComparer.OrdinalIgnoreCase))
                menu.GetLogicalDescendants().OfType<TextBlock>().Any(text => text.Text == "앱") &&
                 menu.GetLogicalDescendants().OfType<TextBlock>().Any(text => text.Text == "예약 작업") &&
                 menu.GetLogicalDescendants().OfType<TextBlock>().Any(text => text.Text == "내 일정") &&
+               menu.GetLogicalDescendants().OfType<TextBlock>().Any(text => text.Text == "기억") &&
                menu.GetLogicalDescendants().OfType<TextBlock>().Any(text => text.Text == "문서 템플릿") &&
                menu.GetLogicalDescendants().OfType<TextBlock>().Any(text => text.Text == "사용법 물어보기") &&
                !menu.GetLogicalDescendants().OfType<TextBlock>().Any(text => text.Text == "Workspace"),
@@ -292,8 +293,9 @@ if (args.Contains("--xaml-smoke", StringComparer.OrdinalIgnoreCase))
         settingsMenu.Measure(new Size(232, 800));
         settingsMenu.Arrange(new Rect(0, 0, 232, 800));
         Assert(settingsMenu.GetLogicalDescendants().OfType<Button>()
-                   .Count(button => button.Classes.Contains("settings-nav")) == 6,
-            "settings sidebar owns LLM, folder, security, memory, Vault, and main-menu navigation");
+                   .Count(button => button.Classes.Contains("settings-nav")) == 5 &&
+               !settingsMenu.GetLogicalDescendants().OfType<TextBlock>().Any(text => text.Text == "기억"),
+            "settings sidebar owns LLM, folder, security, Vault, and main-menu navigation without Memory");
         Assert(home.FindControl<TextBox>("QuickPromptBox") is not null &&
                home.GetLogicalDescendants().OfType<Button>().Count(button => button.Classes.Contains("launch-card")) == 3,
             "home exposes Enter-ready input and exactly three primary start paths");
@@ -455,9 +457,9 @@ if (args.Contains("--xaml-smoke", StringComparer.OrdinalIgnoreCase))
             DataContext = new silaa.ViewModels.MemoryViewModel(harness, null, null, navigation,
                 (_, _) => Task.FromResult(false), (_, _, _) => { })
         };
-        Assert(memory.GetLogicalDescendants().OfType<silaa.UI.SettingsMenuView>().Any() &&
+        Assert(memory.GetLogicalDescendants().OfType<silaa.UI.MainMenuView>().Any() &&
                vault.GetLogicalDescendants().OfType<silaa.UI.SettingsMenuView>().Any(),
-            "Memory and Vault remain inside the settings sidebar shell");
+            "Memory is a workspace-level page while Vault remains inside the settings sidebar shell");
         var automation = new silaa.UI.AutomationPage
         {
             DataContext = new silaa.ViewModels.AutomationViewModel(harness, navigation,
@@ -1024,6 +1026,18 @@ var secretCancel = dialogHost.GetLogicalDescendants().OfType<Button>()
 secretCancel.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
 Assert(await pendingSecretInput is null && !dialogHost.IsVisible,
     "cancelling secure Vault input returns no secret material");
+var interactionBroker = new silaa.Services.ProjectInteractionBroker();
+ChatRunEvent? interactionEvent = null;
+var interactionTask = interactionBroker.RequestAsync(
+    "session", "어느 방식으로 진행할까요?", "빠르게|꼼꼼하게", "직접 입력", 0,
+    "선택이 필요합니다", item => interactionEvent = item, CancellationToken.None, showProgress: false);
+var interactionRequest = JsonSerializer.Deserialize<ProjectInputRequest>(interactionEvent!.Text)!;
+Assert(interactionEvent.Kind == "input_request" && !interactionRequest.ShowProgress &&
+       interactionRequest.Options.SequenceEqual(["빠르게", "꼼꼼하게"]),
+    "ordinary conversation choice tool emits a native card without survey progress chrome");
+Assert(interactionBroker.Submit(interactionRequest.RequestId, "빠르게") &&
+       await interactionTask == "빠르게",
+    "native choice card resumes the waiting Agent tool with the selected answer");
 var toastHost = new silaa.UI.SiToastHost();
 toastHost.Show("Saved", "The operation completed.", silaa.UI.SiStatusTone.Success, 60_000);
 Assert(toastHost.Children.Count == 1,
@@ -1163,7 +1177,9 @@ if (args.Contains("--render-bench", StringComparer.OrdinalIgnoreCase))
 }
 
 var timelineView = new silaa.UI.AgentRunView();
+Assert(timelineView.IsWaiting, "new assistant run displays a waiting spinner before the first event");
 timelineView.AppendReasoning("reasoning one");
+Assert(!timelineView.IsWaiting, "waiting spinner stops when the first reasoning event arrives");
 timelineView.BeginTool("call-1", "read_file\n{\"path\":\"a.cs\"}");
 timelineView.CompleteTool("call-1", "read_file\ncontents");
 timelineView.AppendReasoning("reasoning two");
@@ -1915,6 +1931,9 @@ if (OperatingSystem.IsWindows())
                 "OpenShell-inspired network approval and audit tools sent to Agent Framework");
             Assert(toolNames.Contains("request_vault_secret"),
                 "secure in-chat Vault input tool sent to Agent Framework");
+            Assert(toolNames.Contains("ask_user_question") && toolNames.Contains("ask_calendar_question") &&
+                   toolNames.Contains("finalize_calendar_event"),
+                "ordinary chat exposes native decision cards and confirmed calendar registration tools");
             Assert(toolNames.Contains("web_search") && toolNames.Contains("fetch_url"),
                 "native web research tools sent to Agent Framework");
             Assert(toolNames.Contains("delegate_task") && toolNames.Contains("review_result"),
@@ -1927,6 +1946,10 @@ if (OperatingSystem.IsWindows())
                 "bundled skill creator and newly created local skill loaded");
             Assert(system.Contains("Multi-Agent coordination", StringComparison.Ordinal),
                 "lead Agent receives selective delegation and review guidance");
+            Assert(system.Contains("Native user interaction", StringComparison.Ordinal) &&
+                   system.Contains("ask_user_question", StringComparison.Ordinal) &&
+                   system.Contains("finalize_calendar_event", StringComparison.Ordinal),
+                "ordinary chat is instructed to use native cards for decisions and calendar saving");
         }
         using (var second = JsonDocument.Parse(requests[1].Body))
         {

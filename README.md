@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/TRIPLESONG90/silaa/releases/tag/v0.9.0-preview.1"><img alt="GitHub prerelease" src="https://img.shields.io/github/v/release/TRIPLESONG90/silaa?include_prereleases&style=flat-square&label=release"></a>
+  <a href="https://github.com/TRIPLESONG90/silaa/releases/tag/v0.9.0-preview.2"><img alt="GitHub prerelease" src="https://img.shields.io/github/v/release/TRIPLESONG90/silaa?include_prereleases&style=flat-square&label=release"></a>
   <a href="https://github.com/TRIPLESONG90/silaa/releases"><img alt="GitHub downloads" src="https://img.shields.io/github/downloads/TRIPLESONG90/silaa/total?style=flat-square"></a>
   <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10.0-512BD4?style=flat-square">
   <img alt="Avalonia 12" src="https://img.shields.io/badge/Avalonia-12.1-111111?style=flat-square">
@@ -46,13 +46,13 @@ silaa는 코딩 하네스의 강력한 로컬 도구 사용 능력을 일반 사
 
 ### Windows x64 프리뷰
 
-[**silaa 0.9.0 Preview 1 다운로드**](https://github.com/TRIPLESONG90/silaa/releases/download/v0.9.0-preview.1/silaa-0.9.0-preview.1-win-x64.zip)
+[**silaa 0.9.0 Preview 2 다운로드**](https://github.com/TRIPLESONG90/silaa/releases/download/v0.9.0-preview.2/silaa-0.9.0-preview.2-win-x64.zip)
 
 1. ZIP 파일을 내려받아 원하는 폴더에 압축을 풉니다.
 2. `silaa.exe`를 실행합니다.
 3. **설정 → LLM 연결**에서 OpenAI 호환 API 주소, 모델과 API 키를 등록합니다.
 
-자체 포함형 빌드라 별도의 .NET 런타임 설치가 필요하지 않습니다. 현재 실행 파일은 코드 서명이 없는 프리뷰이므로 Windows SmartScreen 경고가 표시될 수 있습니다. 배포 파일과 SHA-256 체크섬은 [Release 페이지](https://github.com/TRIPLESONG90/silaa/releases/tag/v0.9.0-preview.1)에서 함께 제공합니다.
+자체 포함형 빌드라 별도의 .NET 런타임 설치가 필요하지 않습니다. 현재 실행 파일은 코드 서명이 없는 프리뷰이므로 Windows SmartScreen 경고가 표시될 수 있습니다. 배포 파일과 SHA-256 체크섬은 [Release 페이지](https://github.com/TRIPLESONG90/silaa/releases/tag/v0.9.0-preview.2)에서 함께 제공합니다.
 
 ## 주요 기능
 
@@ -60,6 +60,8 @@ silaa는 코딩 하네스의 강력한 로컬 도구 사용 능력을 일반 사
 
 - 세션별 병렬 응답과 응답 중인 세션 표시
 - 추론 → 도구 호출 → 추론 순서를 유지하는 실시간 타임라인
+- 첫 응답 이벤트를 기다리는 동안 표시되는 가벼운 스피너
+- 사용자 선택·확인·추가 정보가 필요할 때 사용하는 네이티브 인터랙션 카드
 - Markdown, 표, 코드, 차트 렌더링과 대화 전체 복사
 - 응답별 사용 모델 기록과 연결별 추론 단계 선택
 - Microsoft Agent Framework `AIAgent` 기반 스트리밍·함수 호출·실행 수명 주기
@@ -75,6 +77,7 @@ silaa는 코딩 하네스의 강력한 로컬 도구 사용 능력을 일반 사
 ### 일정과 자동화
 
 - 약속·행사·마감 등을 기록하는 실제 캘린더
+- 일반 대화 안에서도 확인 카드를 거쳐 일정을 바로 저장
 - 사용자가 원할 때만 일정 알람이나 준비 작업 추가
 - 백그라운드 작업, 반복 cron 작업과 Windows 완료 알림
 - 창을 닫아도 시스템 트레이에서 작업 지속

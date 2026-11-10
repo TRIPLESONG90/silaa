@@ -69,13 +69,6 @@
 
         <TextBlock Margin="9,18,0,7" FontSize="9.5" FontWeight="SemiBold"
                    LetterSpacing="1.1" Foreground="{DynamicResource SiMutedBrush}" Text="DATA" />
-        <Button Classes="settings-nav" Classes.selected="{Binding IsMemory}"
-                Command="{Binding OpenMemoryCommand}">
-          <StackPanel Orientation="Horizontal" Spacing="10">
-            <materialIcons:MaterialIcon Classes="ui-icon" Kind="BookOpenOutline" />
-            <TextBlock VerticalAlignment="Center" Text="기억" />
-          </StackPanel>
-        </Button>
         <Button Classes="settings-nav" Classes.selected="{Binding IsVault}"
                 Command="{Binding OpenVaultCommand}">
           <StackPanel Orientation="Horizontal" Spacing="10">
